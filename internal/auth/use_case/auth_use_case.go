@@ -15,7 +15,7 @@ type authUseCase struct {
 	userRepo interfaces.UserRepository
 }
 
-func NewAuthUseCase(repo interfaces.UserRepository) interfaces.AuthUseCase {
+func NewAuthUseCase(repo interfaces.UserRepository) domain.AuthUseCase {
 	return &authUseCase{userRepo: repo}
 }
 
@@ -56,7 +56,7 @@ func (a *authUseCase) Register(ctx context.Context, user *domain.User) error{
 		return errors.New("user already exists")
 	}
 
-	existingUser, _ = a.userRepo.FindByStudentId(ctx, user.StudentId)
+	existingUser, _ = a.userRepo.FindByStudentId(ctx, user.StudentID)
 	if existingUser != nil {
 		return errors.New("user already exists")
 	}
@@ -66,6 +66,6 @@ func (a *authUseCase) Register(ctx context.Context, user *domain.User) error{
 		return err
 	}
 	user.Password = string(hashedByte)
-	return a.userRepo.Create(ctx, user)
+	return a.userRepo.Create(ctx, *user)
 }
 

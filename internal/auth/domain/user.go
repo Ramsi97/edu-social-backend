@@ -1,14 +1,23 @@
 package domain
 
+import "context"
+
 type User struct {
 	ID        string `json:"id"`
-	First_name string `json:"first_name"`
-	Last_name string  `json:"last_name"`
-	StudentId string `json:"studentId"`
+	FirstName string `json:"first_name"`
+	LastName string  `json:"last_name"`
+	StudentID string `json:"student_id"`
 	Email     string `json:"email"`
 	Password  string `json:"password"`
-	Joined_year string `json:"joined_year"`
-	Profile_picture string `json:"profile_picture"`
+	JoinedYear string `json:"joined_year"`
+	ProfilePicture *string `json:"profile_picture"`
 	Gender string `json:"gender"`
-	Created_at string `json:"created_at"`
+	CreatedAt string `json:"created_at"`
+}
+
+
+type AuthUseCase interface {
+	Register(ctx context.Context, user *User) error
+	LoginWithEmail(ctx context.Context, email string, password string) (string, error)
+	LoginWithId(ctx context.Context, studentId string, password string) (string, error)
 }

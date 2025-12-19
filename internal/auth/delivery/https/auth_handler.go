@@ -12,16 +12,13 @@ type AuthHandler struct {
 	usecase domain.AuthUseCase
 }
 
-func NewAuthHandler(r *gin.Engine, uc domain.AuthUseCase) {
+func NewAuthHandler(rg *gin.RouterGroup, uc domain.AuthUseCase) {
 	handler := &AuthHandler{
 		usecase: uc,
 	}
 
-	authGroup := r.Group("/auth")
-	{
-		authGroup.POST("/register", handler.Register)
-		authGroup.PATCH("/login", handler.Login)
-	}
+	rg.POST("/register", handler.Register)
+	rg.POST("/login", handler.Login)
 }
 
 func (h *AuthHandler) Register(ctx *gin.Context) {

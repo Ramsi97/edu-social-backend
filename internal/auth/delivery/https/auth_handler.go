@@ -1,6 +1,7 @@
 package https
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/Ramsi97/edu-social-backend/internal/auth/domain"
@@ -31,11 +32,14 @@ func (h *AuthHandler) Register(ctx *gin.Context) {
 	}
 
 	user := &domain.User{
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Email:     req.Email,
-		Password:  req.Password,
-		StudentID: req.StudentID,
+		FirstName:      req.FirstName,
+		LastName:       req.LastName,
+		Email:          req.Email,
+		Password:       req.Password,
+		StudentID:      req.StudentID,
+		JoinedYear:     req.JoinedYear,
+		ProfilePicture: req.ProfilePicture,
+		Gender:         req.Gender,
 	}
 
 	err := h.usecase.Register(ctx.Request.Context(), user)
@@ -57,7 +61,8 @@ func (h *AuthHandler) Login(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if req.Email != nil {
+	if req.Email != nil && *req.Email != "" {
+		fmt.Println("email: " + *req.Email)
 		token, err := h.usecase.LoginWithEmail(ctx.Request.Context(), *req.Email, req.Password)
 		if err != nil {
 			response.Error(ctx, http.StatusUnauthorized, "invalid email or password", err.Error())
@@ -67,7 +72,8 @@ func (h *AuthHandler) Login(ctx *gin.Context) {
 		response.Success(ctx, http.StatusOK, "Login Successful", domain.LoginResponse{
 			Token: token,
 		})
-	} else if req.StudentID != nil {
+		return
+	} else if req.StudentID != nil && *req.StudentID != "" {
 		token, err := h.usecase.LoginWithId(ctx.Request.Context(), *req.StudentID, req.Password)
 		if err != nil {
 			response.Error(ctx, http.StatusUnauthorized, "invalid Id ot password", err.Error())
@@ -77,6 +83,7 @@ func (h *AuthHandler) Login(ctx *gin.Context) {
 		response.Success(ctx, http.StatusOK, "Login Successful", domain.LoginResponse{
 			Token: token,
 		})
+		return
 	}
 	response.Error(ctx, http.StatusBadRequest, "Email or Student ID is required", "")
 

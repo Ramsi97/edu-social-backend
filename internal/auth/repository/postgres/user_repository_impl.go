@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/Ramsi97/edu-social-backend/internal/auth/domain"
@@ -29,10 +30,18 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 	user.ID = newID
 	user.CreatedAt = now
 
+	const layout = "2006-01-02"
+
+	joinedYear, err := time.Parse(layout, user.JoinedYear)
+	fmt.Println("year"+user.JoinedYear)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO users (
 			id, first_name, last_name, student_id, email, 
-			password, joined_year, profile_picture, gender, created_at
+			password_hash, joined_year, profile_picture, gender, created_at
 		) 
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 
@@ -45,7 +54,7 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 		user.StudentID,
 		user.Email,
 		user.Password,
-		user.JoinedYear,
+		joinedYear,
 		user.ProfilePicture,
 		user.Gender,
 		user.CreatedAt,

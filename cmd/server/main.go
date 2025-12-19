@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/Ramsi97/edu-social-backend/internal/auth/delivery/https"
 	"github.com/Ramsi97/edu-social-backend/internal/auth/repository/postgres"
 	usecase "github.com/Ramsi97/edu-social-backend/internal/auth/use_case"
 	"github.com/gin-gonic/gin"
+	_ "github.com/lib/pq"
 )
 
-func main(){
-	
+func main() {
+
 	host := "localhost"
 	port := 5432
 	user := "ramsi"
 	password := "RAMSIDB"
-	dbname := "edu_socail_db"
+	dbname := "edu_social_db"
 
 	psqlinfo := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
@@ -42,14 +42,14 @@ func main(){
 	api := router.Group("/api/v1")
 
 	authGroup := api.Group("/auth")
-	
+
 	https.NewAuthHandler(authGroup, authUseCase)
 
-	serverPort := os.Getenv("PORT")
-	if serverPort == "" {
-		serverPort = "8080"
-	}
+	// serverPort := os.Getenv("PORT")
+	// if serverPort == "" {
+	// 	serverPort = "8080"
+	// }
 
-	router.Run(":", serverPort)
+	router.Run()
 
 }

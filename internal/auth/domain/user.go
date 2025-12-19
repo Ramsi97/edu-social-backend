@@ -1,9 +1,13 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"time"
+	"github.com/google/uuid"
+)
 
 type User struct {
-	ID        string `json:"id"`
+	ID        uuid.UUID `json:"id"`
 	FirstName string `json:"first_name"`
 	LastName string  `json:"last_name"`
 	StudentID string `json:"student_id"`
@@ -12,7 +16,7 @@ type User struct {
 	JoinedYear string `json:"joined_year"`
 	ProfilePicture *string `json:"profile_picture"`
 	Gender string `json:"gender"`
-	CreatedAt string `json:"created_at"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 

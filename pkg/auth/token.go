@@ -5,11 +5,12 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 var secretKey = []byte("5f8UYUGjS806xorE")
 
-func GenerateToken(userID string, duration time.Duration) (string, error) {
+func GenerateToken(userID uuid.UUID, duration time.Duration) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": userID,
 		"exp": time.Now().Add(duration).Unix(),

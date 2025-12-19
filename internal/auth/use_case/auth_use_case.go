@@ -31,7 +31,7 @@ func (a *authUseCase) LoginWithEmail(ctx context.Context, email string, password
 
 	token, err := auth.GenerateToken(user.ID, time.Hour*144)
 	if(err != nil){
-		return "", errors.New("pleas, try again")
+		return "", errors.New("please, try again")
 	}
 	return token, nil
 }
@@ -46,7 +46,11 @@ func (a *authUseCase) LoginWithId(ctx context.Context, studentId string, passwor
 		return "", errors.New("invalid credentials")
 	}
 
-	return "mock_jwt_token_123", nil
+	token, err := auth.GenerateToken(user.ID, time.Hour*144)
+	if(err != nil){
+		return "", errors.New("please, try again")
+	}
+	return token, nil
 }
 
 
@@ -66,6 +70,6 @@ func (a *authUseCase) Register(ctx context.Context, user *domain.User) error{
 		return err
 	}
 	user.Password = string(hashedByte)
-	return a.userRepo.Create(ctx, *user)
+	return a.userRepo.Create(ctx, user)
 }
 

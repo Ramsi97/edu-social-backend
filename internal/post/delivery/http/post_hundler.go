@@ -8,14 +8,14 @@ import (
 	"github.com/Ramsi97/edu-social-backend/internal/post/domain"
 	"github.com/Ramsi97/edu-social-backend/pkg/response"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
-
-type PostHandler struct{
+type PostHandler struct {
 	usecase domain.PostUseCase
 }
 
-func NewPostHandler(rg *gin.RouterGroup,uc domain.PostUseCase) {
+func NewPostHandler(rg *gin.RouterGroup, uc domain.PostUseCase) {
 	handler := PostHandler{
 		usecase: uc,
 	}
@@ -24,43 +24,51 @@ func NewPostHandler(rg *gin.RouterGroup,uc domain.PostUseCase) {
 	rg.GET("/getfeed", handler.GetFeed)
 }
 
-func (p *PostHandler) CreatePost(ctx *gin.Context){
+func (p *PostHandler) CreatePost(ctx *gin.Context) {
 	var req domain.Post
 
-	if err := ctx.ShouldBindJSON(&req); err != nil{
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	uuidString := ctx.GetString("user_id")
+	authorID, err := uuid.Parse(uuidString)
 
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	post := &domain.Post{
-		ID: req.ID,
-		AuthorID: req.AuthorID,
-		Content: req.Content,
+		ID:       req.ID,
+		AuthorID: authorID,
+		Content:  req.Content,
 		MediaUrl: req.MediaUrl,
 	}
 
-	err := p.usecase.CreatePost(post)
+	err = p.usecase.CreatePost(post)
 
-	if err != nil{
+	if err != nil {
 		response.Error(ctx, http.StatusInternalServerError, "Internal Server Error", err.Error())
+		return
 	}
 
 	response.Success(ctx, http.StatusCreated, "Successfully Posted", nil)
 }
 
-func (p *PostHandler) GetFeed(ctx *gin.Context){
+func (p *PostHandler) GetFeed(ctx *gin.Context) {
 	limitstr := ctx.DefaultQuery("limit", "20")
-	lastSeenStr := ctx.DefaultQuery("lastSeenTime", time.Now().String())
+	lastSeenStr := ctx.DefaultQuery("lastSeenTime", time.Now().Format(time.RFC3339))
 
 	limit, err := strconv.Atoi(limitstr)
 
 	if err != nil {
 		response.Error(ctx, http.StatusBadRequest, "invalid limit ", err.Error())
+		return
 	}
 
 	var lastSeenTime *time.Time
 
-	if lastSeenStr != ""{
+	if lastSeenStr != "" {
 		parsedTime, err := time.Parse(time.RFC3339, lastSeenStr)
 		if err != nil {
 			response.Error(ctx, http.StatusBadRequest, "Invalid lastSeenTime", err.Error())
@@ -76,6 +84,6 @@ func (p *PostHandler) GetFeed(ctx *gin.Context){
 		return
 	}
 
-	response.Success(ctx, http.StatusOK, "Feed fetched", posts)	
-	
+	response.Success(ctx, http.StatusOK, "Feed fetched", posts)
+
 }

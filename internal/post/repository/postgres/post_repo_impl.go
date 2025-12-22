@@ -27,7 +27,7 @@ func (r *postRepo) GetFeed(limit int, lastSeenTime *time.Time) ([]domain.Post, e
 	var rows *sql.Rows
 	var err error
 
-	if lastSeenTime == nil{
+	if lastSeenTime == nil {
 		rows, err = r.db.Query(
 			`SELECT * FROM posts
 			ORDERED BY created_at DESC

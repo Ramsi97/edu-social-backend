@@ -1,12 +1,14 @@
 package domain
 
+import "mime/multipart"
+
 type RegisterRequest struct {
-	FirstName string `json:"first_name"`
-	LastName string  `json:"last_name"`
-	StudentID string `json:"student_id"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
-	JoinedYear string `json:"joined_year"`
-	ProfilePicture *string `json:"profile_picture"`
-	Gender string `json:"gender"`
+	FirstName string                 `form:"first_name"`
+	LastName  string                 `form:"last_name"`
+	StudentID string                 `form:"student_id"`
+	Email     string                 `form:"email"`
+	Password  string                 `form:"password"`
+	JoinedYear string                `form:"joined_year"`
+	Gender    string                 `form:"gender"`
+	ProfilePictureFile *multipart.FileHeader `form:"profile_picture"` 
 }

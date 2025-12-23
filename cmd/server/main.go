@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/joho/godotenv"
+
 	"github.com/Ramsi97/edu-social-backend/internal/auth/delivery/https"
 	authPostgres "github.com/Ramsi97/edu-social-backend/internal/auth/repository/postgres"
 	authusecase "github.com/Ramsi97/edu-social-backend/internal/auth/use_case"
@@ -18,11 +20,14 @@ import (
 )
 
 func main() {
-
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("No .env file found, using system env")
+	}
 	host := "localhost"
 	port := 5432
-	user := "ramsi"
-	password := "RAMSIDB"
+	user := "elham"
+	password := "yourpassword"
 	dbname := "edu_social_db"
 
 	psqlinfo := fmt.Sprintf(

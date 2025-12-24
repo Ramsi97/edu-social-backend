@@ -8,7 +8,11 @@ import (
 	"github.com/google/uuid"
 )
 
-var secretKey = []byte("5f8UYUGjS806xorE")
+var secretKey []byte
+
+func SetJWTSecret(secret string) {
+    secretKey = []byte(secret)
+}
 
 func GenerateToken(userID uuid.UUID, duration time.Duration) (string, error) {
 	claims := jwt.MapClaims{

@@ -18,6 +18,7 @@ import (
 	postPostgres "github.com/Ramsi97/edu-social-backend/internal/post/repository/postgres"
 	postUseCase "github.com/Ramsi97/edu-social-backend/internal/post/use_case"
 	cloud "github.com/Ramsi97/edu-social-backend/internal/shared/infrastructure"
+	auth "github.com/Ramsi97/edu-social-backend/pkg/auth"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 )
@@ -27,10 +28,16 @@ func main() {
 	if err != nil {
 		log.Println("No .env file found, using system env")
 	}
+	jwtSecret := os.Getenv("JWT_SECRET")
+    if jwtSecret == "" {
+        log.Fatal("JWT_SECRET not found in .env")
+    }
+    auth.SetJWTSecret(jwtSecret)
+
 	host := "localhost"
 	port := 5432
-	user := "elham"
-	password := "yourpassword"
+	user := "ramsi"
+	password := "RamsiDB"
 	dbname := "edu_social_db"
 
 	psqlinfo := fmt.Sprintf(

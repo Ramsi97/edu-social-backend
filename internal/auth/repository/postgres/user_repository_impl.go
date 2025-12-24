@@ -33,7 +33,8 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 	const layout = "2006-01-02"
 
 	joinedYear, err := time.Parse(layout, user.JoinedYear)
-	fmt.Println("year"+user.JoinedYear)
+	fmt.Println("year" + user.JoinedYear)
+	fmt.Println("Name" + user.FirstName)
 	if err != nil {
 		return err
 	}

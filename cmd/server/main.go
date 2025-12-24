@@ -37,7 +37,7 @@ func main() {
 	host := "localhost"
 	port := 5432
 	user := "ramsi"
-	password := "RamsiDB"
+	password := "RAMSIDB"
 	dbname := "edu_social_db"
 
 	psqlinfo := fmt.Sprintf(

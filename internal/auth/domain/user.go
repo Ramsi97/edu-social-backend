@@ -21,7 +21,7 @@ type User struct {
 
 
 type AuthUseCase interface {
-	Register(ctx context.Context, user *User) error
+	Register(ctx context.Context, user *RegisterRequest) error
 	LoginWithEmail(ctx context.Context, email string, password string) (string, error)
 	LoginWithId(ctx context.Context, studentId string, password string) (string, error)
 }

@@ -23,7 +23,7 @@ func (r *postRepo) CreatePost(post *domain.Post) error {
 
 	post.ID = uuid.New()
 	post.CreatedAt = time.Now()
-	
+
 	query := `
         INSERT INTO posts (id, author_id, content, media_url, created_at)
         VALUES ($1, $2, $3, $4, $5)
@@ -71,7 +71,6 @@ func (r *postRepo) GetFeed(limit int, lastSeenTime *time.Time) ([]domain.Post, e
 			ORDER BY created_at DESC
 			LIMIT $2`, *lastSeenTime, limit,
 		)
-
 	}
 
 	if err != nil {

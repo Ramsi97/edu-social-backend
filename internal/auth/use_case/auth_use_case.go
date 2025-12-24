@@ -6,17 +6,22 @@ import (
 	"time"
 
 	"github.com/Ramsi97/edu-social-backend/internal/auth/domain"
-	"github.com/Ramsi97/edu-social-backend/internal/auth/repository/interfaces"
+	repoInterface "github.com/Ramsi97/edu-social-backend/internal/auth/repository/interfaces"
+	cldInterface "github.com/Ramsi97/edu-social-backend/internal/shared/interfaces"
 	"github.com/Ramsi97/edu-social-backend/pkg/auth"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type authUseCase struct {
-	userRepo interfaces.UserRepository
+	userRepo repoInterface.UserRepository
+	cld cldInterface.MediaStorage
 }
 
-func NewAuthUseCase(repo interfaces.UserRepository) domain.AuthUseCase {
-	return &authUseCase{userRepo: repo}
+func NewAuthUseCase(repo repoInterface.UserRepository, cld cldInterface.MediaStorage) domain.AuthUseCase {
+	return &authUseCase{
+		userRepo: repo,
+		cld: cld,
+	}
 }
 
 func (a *authUseCase) LoginWithEmail(ctx context.Context, email string, password string) (string, error) {
@@ -54,21 +59,44 @@ func (a *authUseCase) LoginWithId(ctx context.Context, studentId string, passwor
 }
 
 
-func (a *authUseCase) Register(ctx context.Context, user *domain.User) error{
-	existingUser, _ := a.userRepo.FindByEmail(ctx, user.Email)
+func (a *authUseCase) Register(ctx context.Context, req *domain.RegisterRequest) error{
+	existingUser, _ := a.userRepo.FindByEmail(ctx, req.Email)
 	if existingUser != nil {
 		return errors.New("user already exists")
 	}
 
-	existingUser, _ = a.userRepo.FindByStudentId(ctx, user.StudentID)
+	existingUser, _ = a.userRepo.FindByStudentId(ctx, req.StudentID)
 	if existingUser != nil {
 		return errors.New("user already exists")
 	}
 
-	hashedByte, err := bcrypt.GenerateFromPassword([]byte(user.Password), 14)
+	hashedByte, err := bcrypt.GenerateFromPassword([]byte(req.Password), 14)
 	if err != nil{
 		return err
 	}
+	
+	var profileURL *string
+
+	if req.ProfilePictureFile != nil {
+		url, err := a.cld.UploadToCloudinary(ctx, req.ProfilePictureFile)
+		if err != nil {
+			return err
+		}
+		profileURL = &url
+	}
+
+
+	user := &domain.User{
+		FirstName:      req.FirstName,
+		LastName:       req.LastName,
+		Email:          req.Email,
+		Password:       req.Password,
+		StudentID:      req.StudentID,
+		JoinedYear:     req.JoinedYear,
+		ProfilePicture: profileURL, 
+		Gender:         req.Gender,
+	}
+
 	user.Password = string(hashedByte)
 	return a.userRepo.Create(ctx, user)
 }

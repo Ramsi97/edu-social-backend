@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/joho/godotenv"
 
 	"github.com/Ramsi97/edu-social-backend/internal/auth/delivery/https"
@@ -15,6 +17,7 @@ import (
 	posthandler "github.com/Ramsi97/edu-social-backend/internal/post/delivery/http"
 	postPostgres "github.com/Ramsi97/edu-social-backend/internal/post/repository/postgres"
 	postUseCase "github.com/Ramsi97/edu-social-backend/internal/post/use_case"
+	cloud "github.com/Ramsi97/edu-social-backend/internal/shared/infrastructure"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 )
@@ -40,8 +43,19 @@ func main() {
 		log.Fatalf("Cannot connect to database: %v", err)
 	}
 
+	cldInstance, err := cloudinary.NewFromParams(
+		os.Getenv("CLOUDINARY_CLOUD_NAME"),
+		os.Getenv("CLOUDINARY_API_KEY"),
+		os.Getenv("CLOUDINARY_API_SECRET"),
+	)
+	if err != nil {
+		log.Fatal("Failed to init Cloudinary")
+	}
+
+	mediaUploader := cloud.NewCloudinaryUploader(cldInstance)
+
 	userRepo := authPostgres.NewUserRepository(db)
-	authUseCase := authusecase.NewAuthUseCase(userRepo)
+	authUseCase := authusecase.NewAuthUseCase(userRepo, mediaUploader)
 	router := gin.Default()
 
 	router.GET("/health", func(ctx *gin.Context) {

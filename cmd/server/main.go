@@ -13,7 +13,7 @@ import (
 	_ "github.com/lib/pq"
 
 	// Auth feature
-	authHttp "github.com/Ramsi97/edu-social-backend/internal/auth/delivery/https"
+	authHttp "github.com/Ramsi97/edu-social-backend/internal/auth/delivery/http"
 	authPostgres "github.com/Ramsi97/edu-social-backend/internal/auth/repository/postgres"
 	authUseCase "github.com/Ramsi97/edu-social-backend/internal/auth/use_case"
 
@@ -23,7 +23,7 @@ import (
 	postUseCase "github.com/Ramsi97/edu-social-backend/internal/post/use_case"
 
 	// Like feature
-	likeHttp "github.com/Ramsi97/edu-social-backend/internal/like/delivery/https"
+	likeHttp "github.com/Ramsi97/edu-social-backend/internal/like/delivery/http"
 	likePostgres "github.com/Ramsi97/edu-social-backend/internal/like/repository/postgres"
 	likeUseCase "github.com/Ramsi97/edu-social-backend/internal/like/use_case"
 

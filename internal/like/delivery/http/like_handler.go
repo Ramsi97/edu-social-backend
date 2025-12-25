@@ -1,4 +1,4 @@
-package https
+package http
 
 import (
 	"net/http"

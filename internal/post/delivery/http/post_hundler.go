@@ -45,7 +45,7 @@ func (p *PostHandler) CreatePost(ctx *gin.Context) {
 		MediaUrl: req.MediaUrl,
 	}
 
-	err = p.usecase.CreatePost(post)
+	err = p.usecase.CreatePost(ctx, post)
 
 	if err != nil {
 		response.Error(ctx, http.StatusInternalServerError, "Internal Server Error", err.Error())
@@ -77,7 +77,7 @@ func (p *PostHandler) GetFeed(ctx *gin.Context) {
 		lastSeenTime = &parsedTime
 	}
 
-	posts, err := p.usecase.GetFeed(limit, lastSeenTime)
+	posts, err := p.usecase.GetFeed(ctx, limit, lastSeenTime)
 
 	if err != nil {
 		response.Error(ctx, http.StatusInternalServerError, "Failed to get feed", err.Error())

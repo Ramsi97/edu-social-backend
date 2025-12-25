@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -18,11 +19,11 @@ func NewPostUseCase(r interfaces.PostRepository) domain.PostUseCase {
 	}
 }
 
-func (u *postUseCase) GetFeed(limit int, lasttimeSeen *time.Time) ([]domain.Post, error) {
+func (u *postUseCase) GetFeed(ctx context.Context, limit int, lasttimeSeen *time.Time) ([]domain.Post, error) {
 	if limit <= 0 {
 		limit = 20
 	}
-	posts, err := u.repo.GetFeed(limit, lasttimeSeen)
+	posts, err := u.repo.GetFeed(ctx, limit, lasttimeSeen)
 
 	if err != nil {
 		return nil, err
@@ -31,10 +32,14 @@ func (u *postUseCase) GetFeed(limit int, lasttimeSeen *time.Time) ([]domain.Post
 	return posts, nil
 }
 
-func (u *postUseCase) CreatePost(post *domain.Post) error {
+func (u *postUseCase) CreatePost(ctx context.Context, post *domain.Post) error {
 	if post.Content == "" && post.MediaUrl == "" {
 		return errors.New("post cannot be empty")
 	}
 
-	return u.repo.CreatePost(post)
+	return u.repo.CreatePost(ctx, post)
+}
+
+func (u *postUseCase) CountLikes(ctx context.Context, postID string) (int, error){
+	panic("unimplemented")
 }

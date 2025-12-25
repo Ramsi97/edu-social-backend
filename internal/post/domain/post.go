@@ -1,7 +1,9 @@
 package domain
 
 import (
+	"context"
 	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -11,10 +13,12 @@ type Post struct{
 	AuthorID uuid.UUID `json:"authod_id"`
 	Content string `json:"content"`
 	MediaUrl string `json:"media_url"`
+	LikeCount int `json:"like_count"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 type PostUseCase interface {
-	CreatePost(post *Post) error
-	GetFeed(limit int, lastSeenTime *time.Time) ([]Post, error)
+	CreatePost(ctx context.Context, post *Post) error
+	GetFeed(ctx context.Context, limit int, lastSeenTime *time.Time) ([]Post, error)
+	CountLikes(ctx context.Context, postID string) (int, error)
 }

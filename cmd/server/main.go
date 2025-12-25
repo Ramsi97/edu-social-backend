@@ -9,47 +9,64 @@ import (
 
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/joho/godotenv"
-
-	"github.com/Ramsi97/edu-social-backend/internal/auth/delivery/https"
-	authPostgres "github.com/Ramsi97/edu-social-backend/internal/auth/repository/postgres"
-	authusecase "github.com/Ramsi97/edu-social-backend/internal/auth/use_case"
-	"github.com/Ramsi97/edu-social-backend/internal/middleware"
-	posthandler "github.com/Ramsi97/edu-social-backend/internal/post/delivery/http"
-	postPostgres "github.com/Ramsi97/edu-social-backend/internal/post/repository/postgres"
-	postUseCase "github.com/Ramsi97/edu-social-backend/internal/post/use_case"
-	cloud "github.com/Ramsi97/edu-social-backend/internal/shared/infrastructure"
-	auth "github.com/Ramsi97/edu-social-backend/pkg/auth"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
+
+	// Auth feature
+	authHttp "github.com/Ramsi97/edu-social-backend/internal/auth/delivery/https"
+	authPostgres "github.com/Ramsi97/edu-social-backend/internal/auth/repository/postgres"
+	authUseCase "github.com/Ramsi97/edu-social-backend/internal/auth/use_case"
+
+	// Post feature
+	postHttp "github.com/Ramsi97/edu-social-backend/internal/post/delivery/http"
+	postPostgres "github.com/Ramsi97/edu-social-backend/internal/post/repository/postgres"
+	postUseCase "github.com/Ramsi97/edu-social-backend/internal/post/use_case"
+
+	// Like feature
+	likeHttp "github.com/Ramsi97/edu-social-backend/internal/like/delivery/https"
+	likePostgres "github.com/Ramsi97/edu-social-backend/internal/like/repository/postgres"
+	likeUseCase "github.com/Ramsi97/edu-social-backend/internal/like/use_case"
+
+	// Shared
+	"github.com/Ramsi97/edu-social-backend/internal/middleware"
+	cloud "github.com/Ramsi97/edu-social-backend/internal/shared/infrastructure"
+	"github.com/Ramsi97/edu-social-backend/pkg/auth"
 )
 
 func main() {
+	// -------------------
+	// Load configuration
+	// -------------------
 	err := godotenv.Load()
 	if err != nil {
 		log.Println("No .env file found, using system env")
 	}
+
 	jwtSecret := os.Getenv("JWT_SECRET")
-    if jwtSecret == "" {
-        log.Fatal("JWT_SECRET not found in .env")
-    }
-    auth.SetJWTSecret(jwtSecret)
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET not found in env")
+	}
+	auth.SetJWTSecret(jwtSecret)
 
-	host := "localhost"
-	port := 5432
-	user := "ramsi"
-	password := "RAMSIDB"
-	dbname := "edu_social_db"
+	dbHost := "localhost"
+	dbPort := 5432
+	dbUser := "ramsi"
+	dbPassword := "RAMSIDB"
+	dbName := "edu_social_db"
 
-	psqlinfo := fmt.Sprintf(
+	psqlInfo := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname,
+		dbHost, dbPort, dbUser, dbPassword, dbName,
 	)
 
-	db, err := sql.Open("postgres", psqlinfo)
+	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
 		log.Fatalf("Cannot connect to database: %v", err)
 	}
 
+	// -------------------
+	// Initialize Cloudinary
+	// -------------------
 	cldInstance, err := cloudinary.NewFromParams(
 		os.Getenv("CLOUDINARY_CLOUD_NAME"),
 		os.Getenv("CLOUDINARY_API_KEY"),
@@ -58,28 +75,48 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to init Cloudinary")
 	}
-
 	mediaUploader := cloud.NewCloudinaryUploader(cldInstance)
 
+	// -------------------
+	// Initialize Repositories
+	// -------------------
 	userRepo := authPostgres.NewUserRepository(db)
-	authUseCase := authusecase.NewAuthUseCase(userRepo, mediaUploader)
+	postRepo := postPostgres.NewPostRepository(db)
+	likeRepo := likePostgres.NewLikeRepository(db)
+
+	// -------------------
+	// Initialize Use Cases
+	// -------------------
+	authUC := authUseCase.NewAuthUseCase(userRepo, mediaUploader)
+	postUC := postUseCase.NewPostUseCase(postRepo)
+	likeUC := likeUseCase.NewLikeUseCase(likeRepo)
+
+	// -------------------
+	// Initialize Router & Groups
+	// -------------------
 	router := gin.Default()
 
+	// Health check
 	router.GET("/health", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, gin.H{"status": "UP"})
 	})
 
-	postRepo := postPostgres.NewPostRepository(db)
-	postUseCase := postUseCase.NewPostUseCase(postRepo)
-
 	api := router.Group("/api/v1")
-
 	authGroup := api.Group("/auth")
 	postGroup := api.Group("/post")
-	postGroup.Use(middleware.AuthMiddleWare())
-	https.NewAuthHandler(authGroup, authUseCase)
-	posthandler.NewPostHandler(postGroup, postUseCase)
+	postGroup.Use(middleware.AuthMiddleWare()) // Auth required
+	likeGroup := api.Group("/like")
+	likeGroup.Use(middleware.AuthMiddleWare()) // Auth required
 
-	router.Run()
+	// -------------------
+	// Attach Handlers
+	// -------------------
+	authHttp.NewAuthHandler(authGroup, authUC)
+	postHttp.NewPostHandler(postGroup, postUC)
+	likeHttp.NewLikeHandler(likeGroup, likeUC)
 
+	// -------------------
+	// Run server
+	// -------------------
+	router.Run(":8080")
 }

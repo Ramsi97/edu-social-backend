@@ -9,19 +9,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type AuthHandler struct {
+type authHandler struct {
 	usecase domain.AuthUseCase
 }
 
 func NewAuthHandler(rg *gin.RouterGroup, uc domain.AuthUseCase) {
-	handler := &AuthHandler{
+	handler := &authHandler{
 		usecase: uc,
 	}
 
 	rg.POST("/register", handler.Register)
 	rg.POST("/login", handler.Login)
 }
-func (h *AuthHandler) Register(ctx *gin.Context) {
+func (h *authHandler) Register(ctx *gin.Context) {
 	var req *domain.RegisterRequest
 
 	
@@ -31,7 +31,7 @@ func (h *AuthHandler) Register(ctx *gin.Context) {
 	}
 
 
-	err := h.usecase.Register(ctx.Request.Context(), req)
+	err := h.usecase.Register(ctx, req)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -44,7 +44,7 @@ func (h *AuthHandler) Register(ctx *gin.Context) {
 
 
 
-func (h *AuthHandler) Login(ctx *gin.Context) {
+func (h *authHandler) Login(ctx *gin.Context) {
 	var req domain.LoginRequest
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {

@@ -1,0 +1,117 @@
+package postgres
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+
+	"github.com/Ramsi97/edu-social-backend/internal/comment/domain"
+	"github.com/Ramsi97/edu-social-backend/internal/comment/repository/interfaces"
+	"github.com/google/uuid"
+)
+
+type commentRepository struct {
+	db *sql.DB
+}
+
+func NewCommentRepository(db *sql.DB) interfaces.CommentRepository {
+	return &commentRepository{
+		db: db,
+	}
+}
+
+func (c *commentRepository) Create(ctx context.Context, comment *domain.Comment) error {
+	query := `
+		INSERT INTO comments (id, content, user_id, post_id, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`
+	_, err := c.db.ExecContext(ctx, query,
+		comment.ID,
+		comment.Content,
+		comment.UserID,
+		comment.PostID,
+		comment.CreatedAT,
+	)
+	return err
+
+}
+
+func (c *commentRepository) Delete(ctx context.Context, commentID uuid.UUID) error {
+	
+	query := `DELETE FROM comments WHERE id = $1`
+	
+	res, err := c.db.ExecContext(ctx, query, commentID)
+	if err != nil {
+		return err
+	}
+
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return domain.ErrCommentNotFound
+	}
+
+	return nil
+}
+
+func (c *commentRepository) GetByID(ctx context.Context, commentID uuid.UUID) (domain.Comment, error) {
+	query := `
+		SELECT id, content, user_id, post_id, created_at, updated_at 
+		FROM comments 
+		WHERE id = $1
+	`
+	var comment domain.Comment
+	err := c.db.QueryRowContext(ctx, query, commentID).Scan(
+		&comment.ID,
+		&comment.Content,
+		&comment.UserID,
+		&comment.PostID,
+		&comment.CreatedAT,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.Comment{}, domain.ErrCommentNotFound
+		}
+		return domain.Comment{}, err
+	}
+
+	return comment, nil
+}
+
+func (c *commentRepository) GetByPostID(ctx context.Context, postID uuid.UUID) ([]domain.Comment, error) {
+	query := `
+		SELECT id, content, user_id, post_id, created_at, updated_at 
+		FROM comments 
+		WHERE post_id = $1
+		ORDER BY created_at DESC
+	`
+	rows, err := c.db.QueryContext(ctx, query, postID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var comments []domain.Comment
+	for rows.Next() {
+		var comment domain.Comment
+		err := rows.Scan(
+			&comment.ID,
+			&comment.Content,
+			&comment.UserID,
+			&comment.PostID,
+			&comment.CreatedAT,
+		)
+		if err != nil {
+			return nil, err
+		}
+		comments = append(comments, comment)
+	}
+
+	// Check for errors encountered during iteration
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return comments, nil
+}
+

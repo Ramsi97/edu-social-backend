@@ -107,7 +107,6 @@ func (c *commentRepository) GetByPostID(ctx context.Context, postID uuid.UUID) (
 		comments = append(comments, comment)
 	}
 
-	// Check for errors encountered during iteration
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}

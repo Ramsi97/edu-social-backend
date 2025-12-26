@@ -12,6 +12,12 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 
+	// Chat
+	chatPostgres "github.com/Ramsi97/edu-social-backend/internal/chat/repository/postgres"
+	chatUseCase "github.com/Ramsi97/edu-social-backend/internal/chat/use_case"
+	chatHttp "github.com/Ramsi97/edu-social-backend/internal/chat/delivery/http"
+	"github.com/Ramsi97/edu-social-backend/internal/chat/socket"
+
 	// Auth feature
 	authHttp "github.com/Ramsi97/edu-social-backend/internal/auth/delivery/http"
 	authPostgres "github.com/Ramsi97/edu-social-backend/internal/auth/repository/postgres"
@@ -37,8 +43,7 @@ func main() {
 	// -------------------
 	// Load configuration
 	// -------------------
-	err := godotenv.Load()
-	if err != nil {
+	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using system env")
 	}
 
@@ -83,6 +88,7 @@ func main() {
 	userRepo := authPostgres.NewUserRepository(db)
 	postRepo := postPostgres.NewPostRepository(db)
 	likeRepo := likePostgres.NewLikeRepository(db)
+	chatRepo := chatPostgres.NewChatRepository(db)
 
 	// -------------------
 	// Initialize Use Cases
@@ -90,9 +96,10 @@ func main() {
 	authUC := authUseCase.NewAuthUseCase(userRepo, mediaUploader)
 	postUC := postUseCase.NewPostUseCase(postRepo)
 	likeUC := likeUseCase.NewLikeUseCase(likeRepo)
+	chatUC := chatUseCase.NewChatUseCase(chatRepo)
 
 	// -------------------
-	// Initialize Router & Groups
+	// Initialize Router
 	// -------------------
 	router := gin.Default()
 
@@ -101,12 +108,29 @@ func main() {
 		ctx.JSON(http.StatusOK, gin.H{"status": "UP"})
 	})
 
+	// -------------------
+	// Start Socket.IO
+	// -------------------
+	socketServer, err := socket.StartSocketServer()
+	if err != nil {
+		log.Fatal("Socket.IO server failed:", err)
+	}
+
+	// Attach Socket.IO to Gin
+	router.GET("/socket.io/*any", gin.WrapH(socketServer))
+	router.POST("/socket.io/*any", gin.WrapH(socketServer))
+
+	// -------------------
+	// API Groups
+	// -------------------
 	api := router.Group("/api/v1")
 	authGroup := api.Group("/auth")
 	postGroup := api.Group("/post")
-	postGroup.Use(middleware.AuthMiddleWare()) 
+	postGroup.Use(middleware.AuthMiddleWare())
 	likeGroup := api.Group("/like")
-	likeGroup.Use(middleware.AuthMiddleWare()) 
+	likeGroup.Use(middleware.AuthMiddleWare())
+	chatGroup := api.Group("/chat")
+	chatGroup.Use(middleware.AuthMiddleWare())
 
 	// -------------------
 	// Attach Handlers
@@ -114,6 +138,7 @@ func main() {
 	authHttp.NewAuthHandler(authGroup, authUC)
 	postHttp.NewPostHandler(postGroup, postUC, mediaUploader)
 	likeHttp.NewLikeHandler(likeGroup, likeUC)
+	chatHttp.NewChatHandler(chatGroup, chatUC)
 
 	// -------------------
 	// Run server

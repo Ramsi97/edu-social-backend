@@ -104,15 +104,15 @@ func main() {
 	api := router.Group("/api/v1")
 	authGroup := api.Group("/auth")
 	postGroup := api.Group("/post")
-	postGroup.Use(middleware.AuthMiddleWare()) // Auth required
+	postGroup.Use(middleware.AuthMiddleWare()) 
 	likeGroup := api.Group("/like")
-	likeGroup.Use(middleware.AuthMiddleWare()) // Auth required
+	likeGroup.Use(middleware.AuthMiddleWare()) 
 
 	// -------------------
 	// Attach Handlers
 	// -------------------
 	authHttp.NewAuthHandler(authGroup, authUC)
-	postHttp.NewPostHandler(postGroup, postUC)
+	postHttp.NewPostHandler(postGroup, postUC, mediaUploader)
 	likeHttp.NewLikeHandler(likeGroup, likeUC)
 
 	// -------------------

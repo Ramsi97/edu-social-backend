@@ -19,17 +19,17 @@ func NewPostUseCase(r interfaces.PostRepository) domain.PostUseCase {
 	}
 }
 
-func (u *postUseCase) GetFeed(ctx context.Context, limit int, lasttimeSeen *time.Time) ([]domain.Post, error) {
+func (u *postUseCase) GetFeed(
+	ctx context.Context,
+	limit int,
+	lastSeenTime *time.Time,
+) ([]domain.Post, error) {
+
 	if limit <= 0 {
 		limit = 20
 	}
-	posts, err := u.repo.GetFeed(ctx, limit, lasttimeSeen)
 
-	if err != nil {
-		return nil, err
-	}
-
-	return posts, nil
+	return u.repo.GetFeed(ctx, limit, lastSeenTime)
 }
 
 func (u *postUseCase) CreatePost(ctx context.Context, post *domain.Post) error {
@@ -40,6 +40,6 @@ func (u *postUseCase) CreatePost(ctx context.Context, post *domain.Post) error {
 	return u.repo.CreatePost(ctx, post)
 }
 
-func (u *postUseCase) CountLikes(ctx context.Context, postID string) (int, error){
+func (u *postUseCase) CountLikes(ctx context.Context, postID string) (int, error) {
 	panic("unimplemented")
 }

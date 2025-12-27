@@ -7,13 +7,12 @@ import (
 	"github.com/google/uuid"
 )
 
-
-type Post struct{
-	ID uuid.UUID `json:"id"`
-	AuthorID uuid.UUID `json:"authod_id"`
-	Content string `json:"content"`
-	MediaUrl string `json:"media_url"`
-	LikeCount int `json:"like_count"`
+type Post struct {
+	ID        uuid.UUID `json:"id"`
+	AuthorID  uuid.UUID `json:"author_id"`
+	Content   string    `json:"content"`
+	MediaUrl  string    `json:"media_url"`
+	LikeCount int       `json:"like_count"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

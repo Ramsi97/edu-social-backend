@@ -8,8 +8,8 @@ import (
 	"os"
 
 	"github.com/cloudinary/cloudinary-go/v2"
-	"github.com/joho/godotenv"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 
 	// Auth feature
@@ -26,6 +26,11 @@ import (
 	likeHttp "github.com/Ramsi97/edu-social-backend/internal/like/delivery/http"
 	likePostgres "github.com/Ramsi97/edu-social-backend/internal/like/repository/postgres"
 	likeUseCase "github.com/Ramsi97/edu-social-backend/internal/like/use_case"
+
+	// Comment Feature
+	commentHttp "github.com/Ramsi97/edu-social-backend/internal/comment/delivery/http"
+	commentPostgres "github.com/Ramsi97/edu-social-backend/internal/comment/repository/postgres"
+	commentUseCase "github.com/Ramsi97/edu-social-backend/internal/comment/use_case"
 
 	// Shared
 	"github.com/Ramsi97/edu-social-backend/internal/middleware"
@@ -83,6 +88,7 @@ func main() {
 	userRepo := authPostgres.NewUserRepository(db)
 	postRepo := postPostgres.NewPostRepository(db)
 	likeRepo := likePostgres.NewLikeRepository(db)
+	commentRepo := commentPostgres.NewCommentRepository(db)
 
 	// -------------------
 	// Initialize Use Cases
@@ -90,6 +96,7 @@ func main() {
 	authUC := authUseCase.NewAuthUseCase(userRepo, mediaUploader)
 	postUC := postUseCase.NewPostUseCase(postRepo)
 	likeUC := likeUseCase.NewLikeUseCase(likeRepo)
+	commentUC := commentUseCase.NewCommentUseCase(commentRepo)
 
 	// -------------------
 	// Initialize Router & Groups
@@ -104,9 +111,11 @@ func main() {
 	api := router.Group("/api/v1")
 	authGroup := api.Group("/auth")
 	postGroup := api.Group("/post")
-	postGroup.Use(middleware.AuthMiddleWare()) 
+	postGroup.Use(middleware.AuthMiddleWare())
 	likeGroup := api.Group("/like")
-	likeGroup.Use(middleware.AuthMiddleWare()) 
+	likeGroup.Use(middleware.AuthMiddleWare())
+	commentGroup := api.Group("/comment")
+	commentGroup.Use(middleware.AuthMiddleWare())
 
 	// -------------------
 	// Attach Handlers
@@ -114,6 +123,7 @@ func main() {
 	authHttp.NewAuthHandler(authGroup, authUC)
 	postHttp.NewPostHandler(postGroup, postUC, mediaUploader)
 	likeHttp.NewLikeHandler(likeGroup, likeUC)
+	commentHttp.NewCommentHandler(commentGroup, commentUC)
 
 	// -------------------
 	// Run server

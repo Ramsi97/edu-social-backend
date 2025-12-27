@@ -6,13 +6,17 @@ require (
 	github.com/cloudinary/cloudinary-go/v2 v2.14.0
 	github.com/gin-gonic/gin v1.11.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/googollee/go-socket.io v1.7.0
 	github.com/joho/godotenv v1.5.1
 	golang.org/x/crypto v0.46.0
 )
 
 require (
 	github.com/creasty/defaults v1.7.0 // indirect
+	github.com/gofrs/uuid v4.0.0+incompatible // indirect
+	github.com/gomodule/redigo v1.8.4 // indirect
 	github.com/gorilla/schema v1.4.1 // indirect
+	github.com/gorilla/websocket v1.4.2 // indirect
 )
 
 require (

@@ -18,8 +18,14 @@ type Comment struct {
 	CreatedAT time.Time `json:"created_at"`
 }
 
+type CommentRequest struct {
+	Content string `json:"content"`
+	UserID string `json:"user_id"`
+	PostID string `json:"post_id"`
+}
+
 type CommentUseCase interface {
 	Create(ctx context.Context, userID, postID, content string) error
-	Delete(ctx context.Context, userID, posID string) error
+	Delete(ctx context.Context, userID, commentID string) error
 	GetByPostID(ctx context.Context, postID string) ([]Comment, error)
 }

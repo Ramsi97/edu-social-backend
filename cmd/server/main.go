@@ -10,13 +10,14 @@ import (
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/zishang520/socket.io/v2/socket"
 	_ "github.com/lib/pq"
 
 	// Chat
 	chatPostgres "github.com/Ramsi97/edu-social-backend/internal/chat/repository/postgres"
 	chatUseCase "github.com/Ramsi97/edu-social-backend/internal/chat/use_case"
 	chatHttp "github.com/Ramsi97/edu-social-backend/internal/chat/delivery/http"
-	"github.com/Ramsi97/edu-social-backend/internal/chat/socket"
+	chatSocket "github.com/Ramsi97/edu-social-backend/internal/chat/socket"
 
 	// Auth feature
 	authHttp "github.com/Ramsi97/edu-social-backend/internal/auth/delivery/http"
@@ -37,6 +38,12 @@ import (
 	commentHttp "github.com/Ramsi97/edu-social-backend/internal/comment/delivery/http"
 	commentPostgres "github.com/Ramsi97/edu-social-backend/internal/comment/repository/postgres"
 	commentUseCase "github.com/Ramsi97/edu-social-backend/internal/comment/use_case"
+
+	// Group Chat Feature
+	groupHttp "github.com/Ramsi97/edu-social-backend/internal/group/delivery/http"
+	groupPostgres "github.com/Ramsi97/edu-social-backend/internal/group/repository/postgres"
+	groupUseCase "github.com/Ramsi97/edu-social-backend/internal/group/use_case"
+	groupSocket "github.com/Ramsi97/edu-social-backend/internal/group/delivery/socket"
 
 	// Shared
 	"github.com/Ramsi97/edu-social-backend/internal/middleware"
@@ -95,6 +102,8 @@ func main() {
 	likeRepo := likePostgres.NewLikeRepository(db)
 	commentRepo := commentPostgres.NewCommentRepository(db)
 	chatRepo := chatPostgres.NewChatRepository(db)
+	groupchatRepo := groupPostgres.NewGroupChatRepo(db)
+
 	// -------------------
 	// Initialize Use Cases
 	// -------------------
@@ -103,6 +112,7 @@ func main() {
 	likeUC := likeUseCase.NewLikeUseCase(likeRepo)
 	commentUC := commentUseCase.NewCommentUseCase(commentRepo)
 	chatUC := chatUseCase.NewChatUseCase(chatRepo)
+	groupchatUC := groupUseCase.NewGroupChatUseCase(groupchatRepo)
 
 	// -------------------
 	// Initialize Router
@@ -114,17 +124,22 @@ func main() {
 		ctx.JSON(http.StatusOK, gin.H{"status": "UP"})
 	})
 
-	// -------------------
-	// Start Socket.IO
-	// -------------------
-	socketServer, err := socket.StartSocketServer()
-	if err != nil {
-		log.Fatal("Socket.IO server failed:", err)
-	}
 
-	// Attach Socket.IO to Gin
-	router.GET("/socket.io/*any", gin.WrapH(socketServer))
-	router.POST("/socket.io/*any", gin.WrapH(socketServer))
+	// ----------------------------------
+	// initialize model Socket.IO Server
+	// ----------------------------------
+	io := socket.NewServer(nil, nil)
+
+	// Register chat (1–1)
+	chatSocketHandler := chatSocket.NewSocketHandler(io, chatUC)
+	chatSocketHandler.RegisterEvents()
+
+	// Register group chat
+	groupChatSocketHandler := groupSocket.NewSocketHandler(io, groupchatUC)
+	groupChatSocketHandler.RegisterEvents()
+
+	router.GET("/socket.io/*any", gin.WrapH(io.ServeHandler(nil)))
+	router.POST("/socket.io/*any", gin.WrapH(io.ServeHandler(nil)))
 
 	// -------------------
 	// API Groups
@@ -140,6 +155,8 @@ func main() {
 	likeGroup.Use(middleware.AuthMiddleWare())
 	chatGroup := api.Group("/chat")
 	chatGroup.Use(middleware.AuthMiddleWare())
+	groupApiGroup := api.Group("/group")
+	groupApiGroup.Use(middleware.AuthMiddleWare())
 
 	// -------------------
 	// Attach Handlers
@@ -149,6 +166,7 @@ func main() {
 	likeHttp.NewLikeHandler(likeGroup, likeUC)
 	commentHttp.NewCommentHandler(commentGroup, commentUC)
 	chatHttp.NewChatHandler(chatGroup, chatUC)
+	groupHttp.NewGroupHandler(groupchatUC, groupApiGroup)
 
 	// -------------------
 	// Run server

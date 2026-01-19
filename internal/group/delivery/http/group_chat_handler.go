@@ -13,8 +13,14 @@ type GroupHandler struct {
 	usecase domain.GroupChatUseCase
 }
 
-func NewGroupHandler(uc domain.GroupChatUseCase) *GroupHandler {
-	return &GroupHandler{usecase: uc}
+func NewGroupHandler(uc domain.GroupChatUseCase, r *gin.RouterGroup) {
+	handler := GroupHandler{usecase: uc}
+
+	r.POST("/groups", handler.CreateGroup)
+	r.POST("/groups/:name/join", handler.JoinGroup)
+	r.POST("/groups/:name/leave", handler.LeaveGroup)
+	r.GET("/groups/:group_id/messages", handler.GetMessages)
+
 }
 
 func (h *GroupHandler) CreateGroup(c *gin.Context) {

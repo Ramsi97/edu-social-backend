@@ -8,9 +8,11 @@ import (
 )
 
 type Message struct {
+	ID uuid.UUID `json:"id"`
 	GroupID uuid.UUID `json:"group_id"`
 	SenderID uuid.UUID `json:"sender_id"`
 	Content string `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Group struct {
@@ -30,7 +32,3 @@ type GroupChatUseCase interface {
     GetMessages(ctx context.Context, groupID uuid.UUID, limit int) ([]*Message, error)
 }
 
-
-type MessagePublisher interface {
-    Broadcast(msg *Message) error
-}

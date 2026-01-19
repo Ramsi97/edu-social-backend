@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"errors"
-	"log"
 
 	"github.com/Ramsi97/edu-social-backend/internal/group/domain"
 	"github.com/Ramsi97/edu-social-backend/internal/group/repository/interfaces"
@@ -12,13 +11,11 @@ import (
 
 type groupChatUseCase struct {
 	repo      interfaces.GroupChatRepo
-	publisher domain.MessagePublisher
 }
 
-func NewGroupChatUseCase(repo interfaces.GroupChatRepo, publisher domain.MessagePublisher) domain.GroupChatUseCase {
+func NewGroupChatUseCase(repo interfaces.GroupChatRepo) domain.GroupChatUseCase {
 	return &groupChatUseCase{
 		repo:      repo,
-		publisher: publisher,
 	}
 }
 
@@ -83,9 +80,6 @@ func (g *groupChatUseCase) SendMessage(ctx context.Context, msg *domain.Message)
         return err
     }
 
-	if err := g.publisher.Broadcast(msg); err != nil {
-		log.Println("broadcast failed:", err)
-	}
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/Ramsi97/edu-social-backend/internal/chat/domain"
+	"github.com/Ramsi97/edu-social-backend/pkg/auth"
 	"github.com/google/uuid"
 	"github.com/zishang520/socket.io/v2/socket"
 )
@@ -108,5 +109,38 @@ func (h *SocketHandler) RegisterEvents() {
 		client.On("disconnect", func(...any) {
 			log.Println("User disconnected:", client.Id())
 		})
+	})
+}
+
+
+
+func (h *SocketHandler) RegisterMiddleWare() {
+	h.io.Use(func (s *socket.Socket, next func (*socket.ExtendedError))  {
+		
+		authData := s.Handshake().Auth
+		authMap, ok := authData.(map[string]any)
+
+		if !ok {
+			next(socket.NewExtendedError("Authentication failed", nil))
+			return
+		}
+
+		token, tokenOK := authMap["token"].(string)
+
+		if !tokenOK || token == "" {
+			next(socket.NewExtendedError("Token required", nil))
+			return
+		}
+
+		userID, err := auth.ValidateToken(token)
+
+		if err != nil {
+			next(socket.NewExtendedError("Invalid token", nil))
+			return
+		}
+
+		s.SetData(userID)
+
+		next(nil)
 	})
 }

@@ -132,10 +132,12 @@ func main() {
 
 	// Register chat (1–1)
 	chatSocketHandler := chatSocket.NewSocketHandler(io, chatUC)
+	chatSocketHandler.RegisterMiddleWare()
 	chatSocketHandler.RegisterEvents()
 
 	// Register group chat
 	groupChatSocketHandler := groupSocket.NewSocketHandler(io, groupchatUC)
+	groupChatSocketHandler.RegisterMiddleWare()
 	groupChatSocketHandler.RegisterEvents()
 
 	router.GET("/socket.io/*any", gin.WrapH(io.ServeHandler(nil)))

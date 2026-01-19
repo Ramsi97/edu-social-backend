@@ -1,71 +1,91 @@
 package http
 
 import (
-	"time"
+	"net/http"
 
 	"github.com/Ramsi97/edu-social-backend/internal/group/domain"
+	"github.com/Ramsi97/edu-social-backend/pkg/response"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
 )
 
-const (
-	pingPeriod = (pongWait * 9) / 10
-	pongWait   = 60 * time.Second
-	writeWait  = 10 * time.Second
-)
-
-type wsClient struct {
-	id uuid.UUID
-	conn *websocket.Conn
-	send chan []byte
+type GroupHandler struct {
+	usecase domain.GroupChatUseCase
 }
 
-func (c *wsClient) ID() uuid.UUID { return c.id}
-func (c *wsClient) Send(msg []byte) { c.send <- msg }
-func (c *wsClient) Close() error {return c.conn.Close()}
+func NewGroupHandler(uc domain.GroupChatUseCase) *GroupHandler {
+	return &GroupHandler{usecase: uc}
+}
 
-func(c *wsClient) WritePump() {
-	ticker := time.NewTicker(pingPeriod)
-
-	defer func(){
-		ticker.Stop()
-		c.conn.Close()
-	}()
-
-	for {
-		select {
-		case message, ok := <- c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-
-			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
-			
-			w, err := c.conn.NextWriter(websocket.TextMessage)
-
-			if err != nil {
-				return
-			}
-			w.Write(message)
-			
-			n := len(c.send)
-			for i := 0; i<n; i++ {
-				w.Write([]byte{'\n'})
-				w.Write(<-c.send)
-			}
-			w.Close()
-
-		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				return
-			}
-		}
+func (h *GroupHandler) CreateGroup(c *gin.Context) {
+	var req struct {
+		Name string `json:"name"`
 	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+
+	userIDStr := c.GetString("userID")
+	userID, err  := uuid.Parse(userIDStr)
+
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "", err.Error())
+		return
+	}
+
+	groupID, err := h.usecase.CreateGroup(c.Request.Context(), userID, req.Name)
+	if err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"group_id": groupID})
 }
 
-func (c *wsClient) ReadPump(h domain.Message){
-		
-	
+func (h *GroupHandler) JoinGroup(c *gin.Context) {
+	groupName := c.Param("name")
+	userIDStr := c.GetString("userID")
+	userID, err  := uuid.Parse(userIDStr)
+
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "", err.Error())
+		return
+	}
+
+	if err := h.usecase.JoinGroup(c.Request.Context(), groupName, userID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
+func (h *GroupHandler) LeaveGroup(c *gin.Context) {
+	groupName := c.Param("name")
+	userID := c.MustGet("userID").(uuid.UUID)
+
+	if err := h.usecase.LeaveGroup(c.Request.Context(), groupName, userID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
+func (h *GroupHandler) GetMessages(c *gin.Context) {
+	groupID, err := uuid.Parse(c.Param("group_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group id"})
+		return
+	}
+
+	msgs, err := h.usecase.GetMessages(c.Request.Context(), groupID, 50)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, msgs)
 }

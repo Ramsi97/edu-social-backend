@@ -43,3 +43,4 @@ func (h *ChatHandler) GetMessages(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, messages)
 }
+	

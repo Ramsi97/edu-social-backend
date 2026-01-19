@@ -23,7 +23,7 @@ import (
 	authPostgres "github.com/Ramsi97/edu-social-backend/internal/auth/repository/postgres"
 	authUseCase "github.com/Ramsi97/edu-social-backend/internal/auth/use_case"
 
-	// Post feature
+	// Post feature	
 	postHttp "github.com/Ramsi97/edu-social-backend/internal/post/delivery/http"
 	postPostgres "github.com/Ramsi97/edu-social-backend/internal/post/repository/postgres"
 	postUseCase "github.com/Ramsi97/edu-social-backend/internal/post/use_case"

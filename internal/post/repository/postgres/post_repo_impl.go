@@ -55,7 +55,7 @@ func (r *postRepo) GetFeed(ctx context.Context, limit int, lastSeenTime *time.Ti
 			p.created_at,
 			COUNT(pl.post_id) AS like_count
 		FROM posts p
-		LEFT JOIN post_likes pl ON p.id = pl.post_id
+		LEFT JOIN posts_likes pl ON p.id = pl.post_id
 		GROUP BY p.id, p.author_id, p.content, p.media_url, p.created_at
 		ORDER BY p.created_at DESC
 		LIMIT $1;
@@ -70,7 +70,7 @@ func (r *postRepo) GetFeed(ctx context.Context, limit int, lastSeenTime *time.Ti
 			p.created_at,
 			COUNT(pl.post_id) AS like_count
 		FROM posts p
-		LEFT JOIN post_likes pl ON p.id = pl.post_id
+		LEFT JOIN posts_likes pl ON p.id = pl.post_id
 		WHERE p.created_at < $1
 		GROUP BY p.id, p.author_id, p.content, p.media_url, p.created_at
 		ORDER BY p.created_at DESC

@@ -39,7 +39,7 @@ func (c *commentUseCase) Create(ctx context.Context, userID string, postID strin
 
 	comment := domain.Comment{
 		ID: uuid.New(),
-		UserID: uID,
+		User: domain.User{UserID: uID},
 		PostID: pID,
 		Content: content,
 		CreatedAT: time.Now(),
@@ -65,7 +65,7 @@ func (c *commentUseCase) Delete(ctx context.Context,userID, commentID string) er
 		return err
 	}
 
-	if existingComment.UserID != uID {
+	if existingComment.User.UserID != uID {
 		return errors.New("you are not authorized to delete this comment")
 	}
 

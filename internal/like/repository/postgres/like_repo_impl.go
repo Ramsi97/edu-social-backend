@@ -19,9 +19,9 @@ func NewLikeRepository(db *sql.DB) interfaces.LikeRepository {
 }
 
 func (l *likeRepository) Create(ctx context.Context, userID, postID uuid.UUID) error {
-	
+
 	query := `
-		INSERT INTO post_likes (user_id, post_id)
+		INSERT INTO posts_likes (user_id, post_id)
 		VALUES ($1, $2)
 		ON CONFLICT DO NOTHING
 	`
@@ -30,9 +30,9 @@ func (l *likeRepository) Create(ctx context.Context, userID, postID uuid.UUID) e
 }
 
 func (l *likeRepository) Delete(ctx context.Context, userID, postID uuid.UUID) error {
-	
+
 	query := `
-		DELETE FROM post_likes
+		DELETE FROM posts_likes
 		WHERE user_id = $1 AND post_id = $2	
 	`
 
@@ -41,11 +41,11 @@ func (l *likeRepository) Delete(ctx context.Context, userID, postID uuid.UUID) e
 }
 
 func (l *likeRepository) Exists(ctx context.Context, userID, postID uuid.UUID) (bool, error) {
-	
+
 	query := `
 		SELECT EXISTS(
 			SELECT 1
-			FROM post_likes
+			FROM posts_likes
 			WHERE user_id = $1 AND post_id = $2
 		)
 	`

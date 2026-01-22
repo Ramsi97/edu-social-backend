@@ -33,13 +33,11 @@ func (h *authHandler) Register(ctx *gin.Context) {
 
 	err := h.usecase.Register(ctx, req)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(ctx, http.StatusInternalServerError, "Server Error", err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, gin.H{
-		"message": "User registered successfully",
-	})
+	response.Success(ctx, http.StatusCreated, "user regitered succefully", gin.H{})
 }
 
 

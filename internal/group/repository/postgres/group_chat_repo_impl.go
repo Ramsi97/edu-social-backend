@@ -22,7 +22,7 @@ func NewGroupChatRepo(db *sql.DB) interfaces.GroupChatRepo {
 
 func (r *groupChatRepo) CreateGroup(ctx context.Context, group *domain.Group) error {
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO groups (id, name, created_at) VALUES ($1, $2, NOW())
+		INSERT INTO groups (id, name, description, owner_id, created_at) VALUES ($1, $2, NOW())
 	`, group.ID, group.Name)
 	return err
 }
@@ -42,7 +42,7 @@ func (r *groupChatRepo) GetGroup(ctx context.Context, groupName string) (uuid.UU
 // JoinGroup adds a user to a group
 func (r *groupChatRepo) JoinGroup(ctx context.Context, groupID, userID uuid.UUID) error {
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO group_members (group_id, user_id, joined_at)
+		INSERT INTO group_members (room_id, user_id, joined_at)
 		VALUES ($1, $2, NOW())
 		ON CONFLICT DO NOTHING
 	`, groupID, userID)
@@ -52,7 +52,7 @@ func (r *groupChatRepo) JoinGroup(ctx context.Context, groupID, userID uuid.UUID
 // LeaveGroup removes a user from a group
 func (r *groupChatRepo) LeaveGroup(ctx context.Context, groupID, userID uuid.UUID) error {
 	_, err := r.db.ExecContext(ctx, `
-		DELETE FROM group_members WHERE group_id=$1 AND user_id=$2
+		DELETE FROM group_members WHERE room_id=$1 AND user_id=$2
 	`, groupID, userID)
 	return err
 }
@@ -60,7 +60,7 @@ func (r *groupChatRepo) LeaveGroup(ctx context.Context, groupID, userID uuid.UUI
 // SaveMessage inserts a new message
 func (r *groupChatRepo) SaveMessage(ctx context.Context, msg *domain.Message) error {
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO messages (id, group_id, sender_id, content, created_at)
+		INSERT INTO messages (id, room_id, sender_id, content, created_at)
 		VALUES ($1, $2, $3, $4, NOW())
 	`, msg.ID, msg.GroupID, msg.SenderID, msg.Content)
 	return err
@@ -71,7 +71,7 @@ func (r *groupChatRepo) IsMember(ctx context.Context, userID, groupID uuid.UUID)
 	var exists bool
 	err := r.db.QueryRowContext(ctx, `
 		SELECT EXISTS (
-			SELECT 1 FROM group_members WHERE user_id=$1 AND group_id=$2
+			SELECT 1 FROM group_members WHERE user_id=$1 AND room_id=$2
 		)
 	`, userID, groupID).Scan(&exists)
 	return exists, err
@@ -80,9 +80,9 @@ func (r *groupChatRepo) IsMember(ctx context.Context, userID, groupID uuid.UUID)
 // GetMessages retrieves the latest messages for a group
 func (r *groupChatRepo) GetMessages(ctx context.Context, groupID uuid.UUID, limit int) ([]*domain.Message, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, group_id, sender_id, content, created_at
+		SELECT id, room_id, sender_id, content, created_at
 		FROM messages
-		WHERE group_id=$1
+		WHERE room_id=$1
 		ORDER BY created_at DESC
 		LIMIT $2
 	`, groupID, limit)

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -40,6 +41,8 @@ func (p *PostHandler) CreatePost(ctx *gin.Context) {
 		response.Error(ctx, http.StatusBadRequest, "Invalid file", err.Error())
 		return
 	}
+
+	fmt.Println(content)
 
 	uuidString := ctx.GetString("user_id")
 	authorID, err := uuid.Parse(uuidString)

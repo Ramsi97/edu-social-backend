@@ -6,25 +6,27 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"github.com/zishang520/socket.io/v2/socket"
 	_ "github.com/lib/pq"
+	"github.com/zishang520/socket.io/v2/socket"
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	// Chat
-	chatPostgres "github.com/Ramsi97/edu-social-backend/internal/chat/repository/postgres"
-	chatUseCase "github.com/Ramsi97/edu-social-backend/internal/chat/use_case"
 	chatHttp "github.com/Ramsi97/edu-social-backend/internal/chat/delivery/http"
+	chatPostgres "github.com/Ramsi97/edu-social-backend/internal/chat/repository/postgres"
 	chatSocket "github.com/Ramsi97/edu-social-backend/internal/chat/socket"
+	chatUseCase "github.com/Ramsi97/edu-social-backend/internal/chat/use_case"
 
 	// Auth feature
 	authHttp "github.com/Ramsi97/edu-social-backend/internal/auth/delivery/http"
 	authPostgres "github.com/Ramsi97/edu-social-backend/internal/auth/repository/postgres"
 	authUseCase "github.com/Ramsi97/edu-social-backend/internal/auth/use_case"
 
-	// Post feature	
+	// Post feature
 	postHttp "github.com/Ramsi97/edu-social-backend/internal/post/delivery/http"
 	postPostgres "github.com/Ramsi97/edu-social-backend/internal/post/repository/postgres"
 	postUseCase "github.com/Ramsi97/edu-social-backend/internal/post/use_case"
@@ -41,9 +43,9 @@ import (
 
 	// Group Chat Feature
 	groupHttp "github.com/Ramsi97/edu-social-backend/internal/group/delivery/http"
+	groupSocket "github.com/Ramsi97/edu-social-backend/internal/group/delivery/socket"
 	groupPostgres "github.com/Ramsi97/edu-social-backend/internal/group/repository/postgres"
 	groupUseCase "github.com/Ramsi97/edu-social-backend/internal/group/use_case"
-	groupSocket "github.com/Ramsi97/edu-social-backend/internal/group/delivery/socket"
 
 	// Shared
 	"github.com/Ramsi97/edu-social-backend/internal/middleware"
@@ -65,21 +67,32 @@ func main() {
 	}
 	auth.SetJWTSecret(jwtSecret)
 
-	dbHost := "localhost"
-	dbPort := 5432
-	dbUser := "ramsi"
-	dbPassword := "RAMSIDB"
-	dbName := "edu_social_db"
+	dbHost := os.Getenv("PGHOST")
+	dbUser := os.Getenv("PGUSER")
+	dbPassword := os.Getenv("PGPASSWORD")
+	dbName := os.Getenv("PGDATABASE")
+	dbSSLMode := os.Getenv("PGSSLMODE")
+	port := 5432
 
 	psqlInfo := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		dbHost, dbPort, dbUser, dbPassword, dbName,
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		dbHost, port, dbUser, dbPassword, dbName, dbSSLMode,
 	)
 
-	db, err := sql.Open("postgres", psqlInfo)
+	db, err := sql.Open("pgx", psqlInfo)
 	if err != nil {
 		log.Fatalf("Cannot connect to database: %v", err)
 	}
+
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(time.Hour)
+
+	if err := db.Ping(); err != nil {
+		log.Fatalf("Database ping failed: %v", err)
+	}
+
+	log.Println("Connected to Neon PostgreSQL")
 
 	// -------------------
 	// Initialize Cloudinary
@@ -123,7 +136,6 @@ func main() {
 	router.GET("/health", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, gin.H{"status": "UP"})
 	})
-
 
 	// ----------------------------------
 	// initialize model Socket.IO Server

@@ -23,12 +23,12 @@ func NewCommentRepository(db *sql.DB) interfaces.CommentRepository {
 func (c *commentRepository) Create(ctx context.Context, comment *domain.Comment) error {
 	query := `
 		INSERT INTO comments (id, content, user_id, post_id, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		VALUES ($1, $2, $3, $4, $5)
 	`
 	_, err := c.db.ExecContext(ctx, query,
 		comment.ID,
 		comment.Content,
-		comment.UserID,
+		comment.User.UserID,
 		comment.PostID,
 		comment.CreatedAT,
 	)
@@ -55,7 +55,7 @@ func (c *commentRepository) Delete(ctx context.Context, commentID uuid.UUID) err
 
 func (c *commentRepository) GetByID(ctx context.Context, commentID uuid.UUID) (domain.Comment, error) {
 	query := `
-		SELECT id, content, user_id, post_id, created_at, updated_at 
+		SELECT id, content, user_id, post_id, created_at 
 		FROM comments 
 		WHERE id = $1
 	`
@@ -63,7 +63,7 @@ func (c *commentRepository) GetByID(ctx context.Context, commentID uuid.UUID) (d
 	err := c.db.QueryRowContext(ctx, query, commentID).Scan(
 		&comment.ID,
 		&comment.Content,
-		&comment.UserID,
+		&comment.User.UserID,
 		&comment.PostID,
 		&comment.CreatedAT,
 	)
@@ -77,14 +77,22 @@ func (c *commentRepository) GetByID(ctx context.Context, commentID uuid.UUID) (d
 
 	return comment, nil
 }
-
 func (c *commentRepository) GetByPostID(ctx context.Context, postID uuid.UUID) ([]domain.Comment, error) {
 	query := `
-		SELECT id, content, user_id, post_id, created_at, updated_at 
-		FROM comments 
-		WHERE post_id = $1
-		ORDER BY created_at DESC
+		SELECT 
+			c.id,
+			c.content,
+			c.post_id,
+			c.created_at,
+			u.id AS user_id,
+			u.first_name || ' ' || u.last_name AS user_name,
+			u.profile_picture
+		FROM comments c
+		JOIN users u ON c.user_id = u.id
+		WHERE c.post_id = $1
+		ORDER BY c.created_at ASC
 	`
+
 	rows, err := c.db.QueryContext(ctx, query, postID)
 	if err != nil {
 		return nil, err
@@ -94,16 +102,22 @@ func (c *commentRepository) GetByPostID(ctx context.Context, postID uuid.UUID) (
 	var comments []domain.Comment
 	for rows.Next() {
 		var comment domain.Comment
+		var user domain.User
+
 		err := rows.Scan(
 			&comment.ID,
 			&comment.Content,
-			&comment.UserID,
 			&comment.PostID,
 			&comment.CreatedAT,
+			&user.UserID,
+			&user.Name,
+			&user.ProfilePicture,
 		)
 		if err != nil {
 			return nil, err
 		}
+
+		comment.User = user
 		comments = append(comments, comment)
 	}
 
@@ -113,4 +127,3 @@ func (c *commentRepository) GetByPostID(ctx context.Context, postID uuid.UUID) (
 
 	return comments, nil
 }
-

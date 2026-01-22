@@ -19,5 +19,4 @@ type Post struct {
 type PostUseCase interface {
 	CreatePost(ctx context.Context, post *Post) error
 	GetFeed(ctx context.Context, limit int, lastSeenTime *time.Time) ([]Post, error)
-	CountLikes(ctx context.Context, postID string) (int, error)
 }

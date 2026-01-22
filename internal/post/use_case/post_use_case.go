@@ -39,7 +39,3 @@ func (u *postUseCase) CreatePost(ctx context.Context, post *domain.Post) error {
 
 	return u.repo.CreatePost(ctx, post)
 }
-
-func (u *postUseCase) CountLikes(ctx context.Context, postID string) (int, error) {
-	panic("unimplemented")
-}

@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/Ramsi97/edu-social-backend/internal/group/domain"
@@ -20,49 +21,120 @@ func NewGroupChatRepo(db *sql.DB) interfaces.GroupChatRepo {
 	}
 }
 
-func (r *groupChatRepo) CreateGroup(ctx context.Context, group *domain.Group) error {
-	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO groups (id, name, description, owner_id, created_at) VALUES ($1, $2, NOW())
-	`, group.ID, group.Name)
-	return err
+
+func (r *groupChatRepo) CreateGroup(
+	ctx context.Context,
+	group *domain.Group,
+) error {
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Insert group
+	res, err := tx.ExecContext(ctx, `
+		INSERT INTO groups (id, name, owner_id, created_at)
+		VALUES ($1, $2, $3, $4)
+	`,
+		group.ID,
+		group.Name,
+		group.OwnerID,
+		group.CreatedAt,
+	)
+	if err != nil {
+		return err
+	}
+
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return domain.ErrGroupAlreadyExists
+	}
+
+	// 2. Insert owner as member
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO group_members (group_id, user_id, role)
+		VALUES ($1, $2, $3, $4)
+	`,
+		group.ID,
+		group.OwnerID,
+		domain.GroupRoleOwner,
+	)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
-// GetGroup retrieves group ID by name
 func (r *groupChatRepo) GetGroup(ctx context.Context, groupName string) (uuid.UUID, error) {
 	var id uuid.UUID
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id FROM groups WHERE name = $1
 	`, groupName).Scan(&id)
+
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("group not found: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return uuid.Nil, domain.ErrGroupNotFound
+		}
+		return uuid.Nil, fmt.Errorf("failed to query group: %w", err)
 	}
+
 	return id, nil
 }
 
+
 // JoinGroup adds a user to a group
 func (r *groupChatRepo) JoinGroup(ctx context.Context, groupID, userID uuid.UUID) error {
-	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO group_members (room_id, user_id, joined_at)
-		VALUES ($1, $2, NOW())
+	res, err := r.db.ExecContext(ctx, `
+		INSERT INTO group_members (group_id, user_id)
+		VALUES ($1, $2)
 		ON CONFLICT DO NOTHING
 	`, groupID, userID)
-	return err
+	if err != nil {
+		return err
+	}
+
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return domain.ErrAlreadyMember
+	}
+	return nil
 }
 
 // LeaveGroup removes a user from a group
 func (r *groupChatRepo) LeaveGroup(ctx context.Context, groupID, userID uuid.UUID) error {
-	_, err := r.db.ExecContext(ctx, `
-		DELETE FROM group_members WHERE room_id=$1 AND user_id=$2
+	res, err := r.db.ExecContext(ctx, `
+		DELETE FROM group_members WHERE group_id=$1 AND user_id=$2
 	`, groupID, userID)
-	return err
+	if err != nil {
+		return err
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return domain.ErrNotMember
+	}
+	return nil
 }
 
 // SaveMessage inserts a new message
 func (r *groupChatRepo) SaveMessage(ctx context.Context, msg *domain.Message) error {
+	// optional: validate content before inserting
+	if msg.Content == "" && msg.MediaURL == "" {
+		return errors.New("either content or media_url must be provided")
+	}
+
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO messages (id, room_id, sender_id, content, created_at)
-		VALUES ($1, $2, $3, $4, NOW())
-	`, msg.ID, msg.GroupID, msg.SenderID, msg.Content)
+		INSERT INTO group_msgs (id, group_id, author_id, content, media_url, created_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+	`,
+		msg.ID,
+		msg.GroupID,
+		msg.AuthorID,
+		msg.Content,
+		msg.MediaURL,
+	)
 	return err
 }
 
@@ -77,12 +149,11 @@ func (r *groupChatRepo) IsMember(ctx context.Context, userID, groupID uuid.UUID)
 	return exists, err
 }
 
-// GetMessages retrieves the latest messages for a group
 func (r *groupChatRepo) GetMessages(ctx context.Context, groupID uuid.UUID, limit int) ([]*domain.Message, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, room_id, sender_id, content, created_at
-		FROM messages
-		WHERE room_id=$1
+		SELECT id, group_id, author_id, content, media_url, created_at
+		FROM group_posts
+		WHERE group_id=$1
 		ORDER BY created_at DESC
 		LIMIT $2
 	`, groupID, limit)
@@ -91,13 +162,13 @@ func (r *groupChatRepo) GetMessages(ctx context.Context, groupID uuid.UUID, limi
 	}
 	defer rows.Close()
 
-	messages := []*domain.Message{}
+	posts := []*domain.Message{}
 	for rows.Next() {
-		var msg domain.Message
-		if err := rows.Scan(&msg.ID, &msg.GroupID, &msg.SenderID, &msg.Content, &msg.CreatedAt); err != nil {
+		var p domain.Message
+		if err := rows.Scan(&p.ID, &p.GroupID, &p.AuthorID, &p.Content, &p.MediaURL, &p.CreatedAt); err != nil {
 			return nil, err
 		}
-		messages = append(messages, &msg)
+		posts = append(posts, &p)
 	}
-	return messages, nil
+	return posts, nil
 }

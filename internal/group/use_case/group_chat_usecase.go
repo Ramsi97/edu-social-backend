@@ -31,9 +31,6 @@ func (g *groupChatUseCase) CreateGroup(ctx context.Context, ownerID uuid.UUID, g
 		ID:      groupID,
         Name:    groupName,
         OwnerID: ownerID,
-        Members: map[uuid.UUID]bool{
-            ownerID: true,
-        },
 	}
 
 	if err := g.repo.CreateGroup(ctx, &group); err != nil {
@@ -66,7 +63,7 @@ func (g *groupChatUseCase) LeaveGroup(ctx context.Context, groupName string, use
 }
 
 func (g *groupChatUseCase) SendMessage(ctx context.Context, msg *domain.Message) error {
-	member, err := g.repo.IsMember(ctx, msg.SenderID, msg.GroupID)
+	member, err := g.repo.IsMember(ctx, msg.AuthorID, msg.GroupID)
 
 	if err != nil {
 		return err

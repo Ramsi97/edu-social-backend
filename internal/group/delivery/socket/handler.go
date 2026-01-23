@@ -47,7 +47,7 @@ func (h *socketHandler) RegisterEvents() {
 			message := &domain.Message{
 				GroupID: groupID,
 				Content: content,
-				SenderID: senderID,
+				AuthorID: senderID,
 			}
 			err := h.chatUsecase.SendMessage(context.Background(), message)
 			if err != nil {

@@ -80,3 +80,18 @@ func (g *groupChatUseCase) SendMessage(ctx context.Context, msg *domain.Message)
 	return nil
 }
 
+
+func (uc *groupChatUseCase) GetGroupsForUser(ctx context.Context, userID uuid.UUID) ([]*domain.Group, error) {
+	// 1️⃣ Validate input (optional)
+	if userID == uuid.Nil {
+		return nil, domain.ErrGroupNotFound // or another domain error for invalid user
+	}
+
+	// 2️⃣ Call repository
+	groups, err := uc.repo.GetGroupsForUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return groups, nil
+}

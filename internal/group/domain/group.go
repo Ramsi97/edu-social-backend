@@ -51,5 +51,6 @@ type GroupChatUseCase interface {
     LeaveGroup(ctx context.Context, groupName string, userID uuid.UUID) error
     SendMessage(ctx context.Context, msg *Message) error
     GetMessages(ctx context.Context, groupID uuid.UUID, limit int) ([]*Message, error)
+	GetGroupsForUser(ctx context.Context, userID uuid.UUID) ([]*Group, error)
 }
 

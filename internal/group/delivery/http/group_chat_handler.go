@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/Ramsi97/edu-social-backend/internal/group/domain"
 	"github.com/Ramsi97/edu-social-backend/pkg/response"
@@ -16,10 +17,11 @@ type GroupHandler struct {
 func NewGroupHandler(uc domain.GroupChatUseCase, r *gin.RouterGroup) {
 	handler := GroupHandler{usecase: uc}
 
-	r.POST("/groups", handler.CreateGroup)
-	r.POST("/groups/:name/join", handler.JoinGroup)
-	r.POST("/groups/:name/leave", handler.LeaveGroup)
-	r.GET("/groups/:group_id/messages", handler.GetMessages)
+	r.POST("/create", handler.CreateGroup)
+	r.POST("/join/:name", handler.JoinGroup)
+	r.POST("/leave/:name", handler.LeaveGroup)
+	r.GET("/messages/:group_id", handler.GetMessages)
+	r.GET("/", handler.GetGroups)
 
 }
 
@@ -33,8 +35,8 @@ func (h *GroupHandler) CreateGroup(c *gin.Context) {
 		return
 	}
 
-	userIDStr := c.GetString("userID")
-	userID, err  := uuid.Parse(userIDStr)
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
 
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "", err.Error())
@@ -43,17 +45,17 @@ func (h *GroupHandler) CreateGroup(c *gin.Context) {
 
 	groupID, err := h.usecase.CreateGroup(c.Request.Context(), userID, req.Name)
 	if err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusConflict, "", err.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"group_id": groupID})
+	response.Success(c, http.StatusCreated, "", gin.H{"group_id": groupID})
 }
 
 func (h *GroupHandler) JoinGroup(c *gin.Context) {
 	groupName := c.Param("name")
-	userIDStr := c.GetString("userID")
-	userID, err  := uuid.Parse(userIDStr)
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
 
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "", err.Error())
@@ -61,7 +63,7 @@ func (h *GroupHandler) JoinGroup(c *gin.Context) {
 	}
 
 	if err := h.usecase.JoinGroup(c.Request.Context(), groupName, userID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusBadRequest, "", err.Error())
 		return
 	}
 
@@ -70,7 +72,13 @@ func (h *GroupHandler) JoinGroup(c *gin.Context) {
 
 func (h *GroupHandler) LeaveGroup(c *gin.Context) {
 	groupName := c.Param("name")
-	userID := c.MustGet("userID").(uuid.UUID)
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "", err.Error())
+		return
+	}
 
 	if err := h.usecase.LeaveGroup(c.Request.Context(), groupName, userID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -94,4 +102,41 @@ func (h *GroupHandler) GetMessages(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, msgs)
+}
+
+func (h *GroupHandler) GetGroups(c *gin.Context) {
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "", err.Error())
+		return
+	}
+
+	groups, err := h.usecase.GetGroupsForUser(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to fetch groups"})
+		return
+	}
+
+	// 3️⃣ Convert domain objects to response DTOs
+	type groupResponse struct {
+		ID      uuid.UUID `json:"id"`
+		Name    string    `json:"name"`
+		OwnerID uuid.UUID `json:"owner_id"`
+		Created string    `json:"created_at"`
+	}
+
+	res := make([]groupResponse, len(groups))
+	for i, g := range groups {
+		res[i] = groupResponse{
+			ID:      g.ID,
+			Name:    g.Name,
+			OwnerID: g.OwnerID,
+			Created: g.CreatedAt.Format(time.RFC3339),
+		}
+	}
+
+	// 4️⃣ Send JSON response
+	c.JSON(200, gin.H{"groups": res})
 }

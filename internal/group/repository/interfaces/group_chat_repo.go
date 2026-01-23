@@ -14,5 +14,6 @@ type GroupChatRepo interface {
 	LeaveGroup(ctx context.Context, groupID, userID uuid.UUID) error
 	SaveMessage(ctx context.Context, msg *domain.Message) error
 	IsMember(ctx context.Context, userID, groupID uuid.UUID) (bool, error)
+	GetGroupsForUser(ctx context.Context, userID uuid.UUID) ([]*domain.Group, error)
 	GetMessages(ctx context.Context, groupID uuid.UUID, limit int) ([]*domain.Message, error)
 }

@@ -21,7 +21,6 @@ func NewGroupChatRepo(db *sql.DB) interfaces.GroupChatRepo {
 	}
 }
 
-
 func (r *groupChatRepo) CreateGroup(
 	ctx context.Context,
 	group *domain.Group,
@@ -44,6 +43,7 @@ func (r *groupChatRepo) CreateGroup(
 		group.CreatedAt,
 	)
 	if err != nil {
+		fmt.Println("error happend in databse")
 		return err
 	}
 
@@ -55,7 +55,7 @@ func (r *groupChatRepo) CreateGroup(
 	// 2. Insert owner as member
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO group_members (group_id, user_id, role)
-		VALUES ($1, $2, $3, $4)
+		VALUES ($1, $2, $3)
 	`,
 		group.ID,
 		group.OwnerID,
@@ -83,7 +83,6 @@ func (r *groupChatRepo) GetGroup(ctx context.Context, groupName string) (uuid.UU
 
 	return id, nil
 }
-
 
 // JoinGroup adds a user to a group
 func (r *groupChatRepo) JoinGroup(ctx context.Context, groupID, userID uuid.UUID) error {
@@ -171,4 +170,29 @@ func (r *groupChatRepo) GetMessages(ctx context.Context, groupID uuid.UUID, limi
 		posts = append(posts, &p)
 	}
 	return posts, nil
+}
+
+func (r *groupChatRepo) GetGroupsForUser(ctx context.Context, userID uuid.UUID) ([]*domain.Group, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT g.id, g.name, g.owner_id, g.created_at
+		FROM groups g
+		JOIN group_members gm ON g.id = gm.group_id
+		WHERE gm.user_id = $1
+		ORDER BY g.created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var groups []*domain.Group
+	for rows.Next() {
+		var g domain.Group
+		if err := rows.Scan(&g.ID, &g.Name, &g.OwnerID, &g.CreatedAt); err != nil {
+			return nil, err
+		}
+		groups = append(groups, &g)
+	}
+
+	return groups, nil
 }

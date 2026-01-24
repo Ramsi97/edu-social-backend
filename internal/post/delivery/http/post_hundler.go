@@ -28,8 +28,8 @@ func NewPostHandler(
 		mediaStorage: ms,
 	}
 
-	rg.POST("/createpost", handler.CreatePost)
-	rg.GET("/getfeed", handler.GetFeed)
+	rg.POST("/", handler.CreatePost)
+	rg.GET("/feed", handler.GetFeed)
 }
 
 func (p *PostHandler) CreatePost(ctx *gin.Context) {

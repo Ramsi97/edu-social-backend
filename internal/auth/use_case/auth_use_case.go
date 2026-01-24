@@ -24,21 +24,21 @@ func NewAuthUseCase(repo repoInterface.UserRepository, cld cldInterface.MediaSto
 	}
 }
 
-func (a *authUseCase) LoginWithEmail(ctx context.Context, email string, password string) (string, error) {
+func (a *authUseCase) LoginWithEmail(ctx context.Context, email string, password string) (*domain.User, string, error) {
 	user, err := a.userRepo.FindByEmail(ctx, email)
 	if err != nil {
-		return "", errors.New("invalid credentials")
+		return nil, "", errors.New("invalid credentials")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil{
-		return "", errors.New("invalid credentials")
+		return nil, "", errors.New("invalid credentials")
 	}
 
-	token, err := auth.GenerateToken(user.ID, time.Hour*144)
+	token, err := auth.GenerateToken(user.ID, time.Hour*72)
 	if(err != nil){
-		return "", errors.New("please, try again")
+		return nil, "", errors.New("please, try again")
 	}
-	return token, nil
+	return user, token, nil
 }
 
 func (a *authUseCase) LoginWithId(ctx context.Context, studentId string, password string) (string, error) {

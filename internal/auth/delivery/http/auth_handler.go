@@ -2,7 +2,9 @@ package http
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/Ramsi97/edu-social-backend/internal/auth/domain"
 	"github.com/Ramsi97/edu-social-backend/pkg/response"
@@ -30,9 +32,11 @@ func (h *authHandler) Register(ctx *gin.Context) {
 		return
 	}
 
+	fmt.Println(req)
 
 	err := h.usecase.Register(ctx, req)
 	if err != nil {
+		log.Fatal(err)
 		response.Error(ctx, http.StatusInternalServerError, "Server Error", err.Error())
 		return
 	}
@@ -49,22 +53,38 @@ func (h *authHandler) Login(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	fmt.Println(req)
 	if req.Email != nil && *req.Email != "" {
 		fmt.Println("email: " + *req.Email)
-		token, err := h.usecase.LoginWithEmail(ctx.Request.Context(), *req.Email, req.Password)
+		user, token, err := h.usecase.LoginWithEmail(ctx.Request.Context(), *req.Email, req.Password)
 		if err != nil {
 			response.Error(ctx, http.StatusUnauthorized, "invalid email or password", err.Error())
 			return
 		}
+		userResponse := domain.UserResponse{
+			ID:         user.ID.String(),
+			FirstName:  user.FirstName,
+			LastName:   user.LastName,
+			StudentID:  user.StudentID,
+			Email:      user.Email,
+			JoinedYear: user.JoinedYear,
+			ProfilePicture: user.ProfilePicture,
+			Gender:     user.Gender,
+			CreatedAt:  user.CreatedAt.Format(time.RFC3339),
+		}
+
+
+
 
 		response.Success(ctx, http.StatusOK, "Login Successful", domain.LoginResponse{
 			Token: token,
+			User: userResponse,
 		})
 		return
 	} else if req.StudentID != nil && *req.StudentID != "" {
 		token, err := h.usecase.LoginWithId(ctx.Request.Context(), *req.StudentID, req.Password)
 		if err != nil {
-			response.Error(ctx, http.StatusUnauthorized, "invalid Id ot password", err.Error())
+			response.Error(ctx, http.StatusUnauthorized, "invalid Id or password", err.Error())
 			return
 		}
 

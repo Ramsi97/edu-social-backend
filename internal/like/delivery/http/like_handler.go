@@ -24,7 +24,7 @@ func NewLikeHandler(rg *gin.RouterGroup, uc domain.LikeUseCase) {
 func (l *likeHandler) Togglelike(ctx *gin.Context) {
 
 	var req domain.LikeRequest
-
+	
 	if err := ctx.ShouldBind(&req); err != nil {
 		response.Error(ctx, http.StatusBadRequest, "Invalid Request", err.Error())
 		return

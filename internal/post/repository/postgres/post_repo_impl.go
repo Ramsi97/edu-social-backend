@@ -33,7 +33,7 @@ func (r *postRepo) CreatePost(ctx context.Context, post *domain.Post) error {
 		ctx,
 		query,
 		post.ID,
-		post.AuthorID,
+		post.Author.ID,
 		post.Content,
 		post.MediaUrl,
 		post.CreatedAt,
@@ -42,45 +42,54 @@ func (r *postRepo) CreatePost(ctx context.Context, post *domain.Post) error {
 	return err
 }
 
-func (r *postRepo) GetFeed(ctx context.Context, limit int, lastSeenTime *time.Time) ([]domain.Post, error) {
+func (r *postRepo) GetFeed(
+	ctx context.Context,
+	limit int,
+	lastSeenTime *time.Time,
+	currentUserID uuid.UUID, // current logged-in user
+) ([]domain.Post, error) {
 	var rows *sql.Rows
 	var err error
 
-	query1 := `
-		SELECT 
-			p.id,
-			p.author_id,
-			p.content,
-			p.media_url,
-			p.created_at,
-			COUNT(pl.post_id) AS like_count
-		FROM posts p
-		LEFT JOIN posts_likes pl ON p.id = pl.post_id
-		GROUP BY p.id, p.author_id, p.content, p.media_url, p.created_at
-		ORDER BY p.created_at DESC
-		LIMIT $1;
-	`
+	// Base query with like count, liked_by_me, and comment count
+	baseQuery := `
+        SELECT 
+            p.id,
+            p.content,
+            p.media_url,
+            p.created_at,
 
-	query2 := `
-		SELECT 
-			p.id,
-			p.author_id,
-			p.content,
-			p.media_url,
-			p.created_at,
-			COUNT(pl.post_id) AS like_count
-		FROM posts p
-		LEFT JOIN posts_likes pl ON p.id = pl.post_id
-		WHERE p.created_at < $1
-		GROUP BY p.id, p.author_id, p.content, p.media_url, p.created_at
-		ORDER BY p.created_at DESC
-		LIMIT $2;
-	`
+            u.id AS author_id,
+            u.first_name,
+            u.last_name,
+            u.profile_picture,
+            u.joined_year,
+
+            COUNT(DISTINCT pl.post_id) AS like_count,
+            CASE WHEN ul.user_id IS NOT NULL THEN TRUE ELSE FALSE END AS liked_by_me,
+            COUNT(DISTINCT c.id) AS comment_count
+        FROM posts p
+        JOIN users u ON p.author_id = u.id
+        LEFT JOIN posts_likes pl ON p.id = pl.post_id
+        LEFT JOIN posts_likes ul ON p.id = ul.post_id AND ul.user_id = $2
+        LEFT JOIN comments c ON p.id = c.post_id
+    `
 
 	if lastSeenTime == nil {
-		rows, err = r.db.QueryContext(ctx, query1, limit)
+		query := baseQuery + `
+            GROUP BY p.id, u.id, ul.user_id
+            ORDER BY p.created_at DESC
+            LIMIT $1
+        `
+		rows, err = r.db.QueryContext(ctx, query, limit, currentUserID)
 	} else {
-		rows, err = r.db.QueryContext(ctx, query2, *lastSeenTime, limit)
+		query := baseQuery + `
+            WHERE p.created_at < $3
+            GROUP BY p.id, u.id, ul.user_id
+            ORDER BY p.created_at DESC
+            LIMIT $1
+        `
+		rows, err = r.db.QueryContext(ctx, query, limit, currentUserID, *lastSeenTime)
 	}
 
 	if err != nil {
@@ -88,20 +97,30 @@ func (r *postRepo) GetFeed(ctx context.Context, limit int, lastSeenTime *time.Ti
 	}
 	defer rows.Close()
 
-	var posts []domain.Post
+	posts := []domain.Post{}
 
 	for rows.Next() {
 		var p domain.Post
+		var author domain.UserSummary
+
 		if err := rows.Scan(
 			&p.ID,
-			&p.AuthorID,
 			&p.Content,
 			&p.MediaUrl,
 			&p.CreatedAt,
+			&author.ID,
+			&author.FirstName,
+			&author.LastName,
+			&author.ProfilePicture,
+			&author.JoinedYear,
 			&p.LikeCount,
+			&p.LikedByMe,
+			&p.CommentCount,
 		); err != nil {
 			return nil, err
 		}
+
+		p.Author = author
 		posts = append(posts, p)
 	}
 

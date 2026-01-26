@@ -28,7 +28,7 @@ func NewPostHandler(
 		mediaStorage: ms,
 	}
 
-	rg.POST("/", handler.CreatePost)
+	rg.POST("", handler.CreatePost)
 	rg.GET("/feed", handler.GetFeed)
 }
 
@@ -62,7 +62,7 @@ func (p *PostHandler) CreatePost(ctx *gin.Context) {
 	}
 
 	post := &domain.Post{
-		AuthorID: authorID,
+		Author: domain.UserSummary{ID: authorID},
 		Content:  content,
 		MediaUrl: mediaURL,
 	}
@@ -78,7 +78,7 @@ func (p *PostHandler) CreatePost(ctx *gin.Context) {
 
 func (p *PostHandler) GetFeed(ctx *gin.Context) {
 	limitStr := ctx.DefaultQuery("limit", "20")
-	lastSeenStr := ctx.Query("lastSeenTime")
+	lastSeenStr := ctx.Query("filter")
 
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
@@ -96,11 +96,17 @@ func (p *PostHandler) GetFeed(ctx *gin.Context) {
 		lastSeenTime = &parsedTime
 	}
 
-	posts, err := p.usecase.GetFeed(ctx, limit, lastSeenTime)
+	uuidString := ctx.GetString("user_id")
+	authorID, err := uuid.Parse(uuidString)
+	if err != nil {
+		response.Error(ctx, http.StatusBadRequest, "Invalid user ID", err.Error())
+		return
+	}
+
+	posts, err := p.usecase.GetFeed(ctx, limit, lastSeenTime, authorID)
 	if err != nil {
 		response.Error(ctx, http.StatusInternalServerError, "Failed to fetch feed", err.Error())
 		return
 	}
-
 	response.Success(ctx, http.StatusOK, "Feed fetched successfully", posts)
 }

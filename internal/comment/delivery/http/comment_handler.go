@@ -74,6 +74,6 @@ func (h *commentHandler) GetByPostID(c *gin.Context) {
 	if comments == nil {
 		comments = []domain.Comment{}
 	}
-
+	
 	response.Success(c, http.StatusOK, "", gin.H{"post_id": postID, "comments": comments})
 }

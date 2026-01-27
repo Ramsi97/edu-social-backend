@@ -23,6 +23,7 @@ type Group struct {
 	Description string `json:"description"`
 	OwnerID uuid.UUID `json:"owner_id"`
 	CreatedAt time.Time `json:"created_at"`
+	MemberCount int `json:"member_count"`
 }
 
 type GroupMember struct {

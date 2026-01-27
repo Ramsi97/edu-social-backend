@@ -25,38 +25,72 @@ func NewSocketHandler(io *socket.Server, uc domain.GroupChatUseCase) *socketHand
 }
 
 func (h *socketHandler) RegisterEvents() {
-
-	h.io.On("connection", func (clients ...any)  {
-		client := clients[0].(*socket.Socket)
+	h.io.On("connection", func(clients ...any) {
+		if len(clients) == 0 {
+			return
+		}
+		client, ok := clients[0].(*socket.Socket)
+		if !ok {
+			return
+		}
 		log.Printf("User connected: %s", client.Id())
-
 		client.On("join_group", func(data ...any) {
-			groupIDstr := data[0].(string)
+			if len(data) == 0 || data[0] == nil {
+				return
+			}
+			groupIDstr, ok := data[0].(string)
+			if !ok {
+				log.Printf("Error: join_group expected string, got %T", data[0])
+				return
+			}
 			client.Join(socket.Room(groupIDstr))
 			log.Printf("User %s joined group %s", client.Id(), groupIDstr)
 		})
-
 		client.On("send_message", func(data ...any) {
-			msgData := data[0].(map[string]any)
-			groupIDStr := msgData["group_id"].(string)
-			content := msgData["content"].(string)
-			
-			senderIDRaw := client.Data() 
-    		senderID := senderIDRaw.(uuid.UUID) 	
-			groupID, _ := uuid.Parse(groupIDStr)
+			if len(data) == 0 || data[0] == nil {
+				return
+			}
+			msgData, ok := data[0].(map[string]any)
+			if !ok {
+				log.Printf("Error: send_message expected map, got %T", data[0])
+				return
+			}
+			// Use safe retrieval with "ok" idiom to prevent nil-to-string panics
+			groupIDStr, groupOK := msgData["group_id"].(string)
+			content, contentOK := msgData["content"].(string)
+			if !groupOK || !contentOK {
+				log.Printf("Error: group_id or content missing/nil in payload")
+				return
+			}
+			// Get sender ID from SetData(userID) in middleware
+			senderIDRaw := client.Data()
+			if senderIDRaw == nil {
+				log.Printf("Error: sender ID not found in socket data")
+				return
+			}
+			senderID, ok := senderIDRaw.(uuid.UUID)
+			if !ok {
+				log.Printf("Error: senderID in socket data is not uuid.UUID, got %T", senderIDRaw)
+				return
+			}
+			groupID, err := uuid.Parse(groupIDStr)
+			if err != nil {
+				log.Printf("Error parsing group ID: %v", err)
+				return
+			}
 			message := &domain.Message{
-				GroupID: groupID,
-				Content: content,
+				GroupID:  groupID,
+				Content:  content,
 				AuthorID: senderID,
 			}
-			err := h.chatUsecase.SendMessage(context.Background(), message)
+			err = h.chatUsecase.SendMessage(context.Background(), message)
 			if err != nil {
 				client.Emit("error", err.Error())
 				return
 			}
+			// Broadcast to room
 			h.io.To(socket.Room(groupIDStr)).Emit("new_message", content)
 		})
-
 		client.On("disconnect", func(...any) {
 			log.Println("User disconnected")
 		})
@@ -81,14 +115,20 @@ func (h *socketHandler) RegisterMiddleWare() {
 			return
 		}
 
-		userID, err := auth.ValidateToken(token)
+		userIDStr, err := auth.ValidateToken(token)
 
 		if err != nil {
 			next(socket.NewExtendedError("Invalid token", nil))
 			return
 		}
 
-		s.SetData(userID)
+		userUUID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			next(socket.NewExtendedError("Invalid user ID", nil))
+			return
+		}
+
+		s.SetData(userUUID)
 
 		next(nil)
 	})

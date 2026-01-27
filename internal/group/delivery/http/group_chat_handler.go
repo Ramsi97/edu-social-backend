@@ -17,11 +17,11 @@ type GroupHandler struct {
 func NewGroupHandler(uc domain.GroupChatUseCase, r *gin.RouterGroup) {
 	handler := GroupHandler{usecase: uc}
 
-	r.POST("/create", handler.CreateGroup)
+	r.POST("", handler.CreateGroup)
 	r.POST("/join/:name", handler.JoinGroup)
 	r.POST("/leave/:name", handler.LeaveGroup)
 	r.GET("/messages/:group_id", handler.GetMessages)
-	r.GET("/", handler.GetGroups)
+	r.GET("", handler.GetGroups)
 
 }
 
@@ -91,17 +91,17 @@ func (h *GroupHandler) LeaveGroup(c *gin.Context) {
 func (h *GroupHandler) GetMessages(c *gin.Context) {
 	groupID, err := uuid.Parse(c.Param("group_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid group id"})
+		response.Error(c, http.StatusBadRequest, "", err.Error())
 		return
 	}
 
 	msgs, err := h.usecase.GetMessages(c.Request.Context(), groupID, 50)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusInternalServerError, "", err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, msgs)
+	response.Success(c, http.StatusOK, "", msgs)
 }
 
 func (h *GroupHandler) GetGroups(c *gin.Context) {
@@ -109,13 +109,13 @@ func (h *GroupHandler) GetGroups(c *gin.Context) {
 	userID, err := uuid.Parse(userIDStr)
 
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "", err.Error())
+		response.Error(c, http.StatusBadRequest, "", err.Error())
 		return
 	}
 
 	groups, err := h.usecase.GetGroupsForUser(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(500, gin.H{"error": "failed to fetch groups"})
+		response.Error(c, http.StatusInternalServerError, "failed to fetch groups", err.Error())
 		return
 	}
 
@@ -125,6 +125,7 @@ func (h *GroupHandler) GetGroups(c *gin.Context) {
 		Name    string    `json:"name"`
 		OwnerID uuid.UUID `json:"owner_id"`
 		Created string    `json:"created_at"`
+		MemberCount int `json:"member_count"`
 	}
 
 	res := make([]groupResponse, len(groups))
@@ -134,9 +135,9 @@ func (h *GroupHandler) GetGroups(c *gin.Context) {
 			Name:    g.Name,
 			OwnerID: g.OwnerID,
 			Created: g.CreatedAt.Format(time.RFC3339),
+			MemberCount: g.MemberCount,
 		}
 	}
 
-	// 4️⃣ Send JSON response
-	c.JSON(200, gin.H{"groups": res})
+	response.Success(c, http.StatusAccepted, "", res)
 }

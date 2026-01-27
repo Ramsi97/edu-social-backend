@@ -22,8 +22,55 @@ func NewGroupHandler(uc domain.GroupChatUseCase, r *gin.RouterGroup) {
 	r.POST("/leave/:name", handler.LeaveGroup)
 	r.GET("/messages/:group_id", handler.GetMessages)
 	r.GET("", handler.GetGroups)
+	r.POST("/messages", handler.SendMessage)
+
 
 }
+
+func (h *GroupHandler) SendMessage(c *gin.Context) {
+	var req struct {
+		GroupID string `json:"group_id"`
+		Content string `json:"content"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid payload", err.Error())
+		return
+	}
+
+	if req.GroupID == "" || req.Content == "" {
+		response.Error(c, http.StatusBadRequest, "group_id and content are required", "")
+		return
+	}
+
+	// Get user from auth middleware
+	userIDStr := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.Error(c, http.StatusUnauthorized, "invalid user", err.Error())
+		return
+	}
+
+	groupID, err := uuid.Parse(req.GroupID)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid group_id", err.Error())
+		return
+	}
+
+	msg := &domain.Message{
+		GroupID:  groupID,
+		AuthorID: userID,
+		Content:  req.Content,
+	}
+
+	if err := h.usecase.SendMessage(c.Request.Context(), msg); err != nil {
+		response.Error(c, http.StatusInternalServerError, "failed to send message", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusCreated, "message sent", nil)
+}
+
 
 func (h *GroupHandler) CreateGroup(c *gin.Context) {
 	var req struct {

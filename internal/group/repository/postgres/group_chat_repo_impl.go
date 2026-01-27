@@ -125,7 +125,7 @@ func (r *groupChatRepo) SaveMessage(ctx context.Context, msg *domain.Message) er
 	}
 
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO group_msgs (id, group_id, author_id, content, media_url, created_at)
+		INSERT INTO group_posts (id, group_id, author_id, content, media_url, created_at)
 		VALUES ($1, $2, $3, $4, $5, NOW())
 	`,
 		msg.ID,
@@ -142,7 +142,7 @@ func (r *groupChatRepo) IsMember(ctx context.Context, userID, groupID uuid.UUID)
 	var exists bool
 	err := r.db.QueryRowContext(ctx, `
 		SELECT EXISTS (
-			SELECT 1 FROM group_members WHERE user_id=$1 AND room_id=$2
+			SELECT 1 FROM group_members WHERE user_id=$1 AND group_id=$2
 		)
 	`, userID, groupID).Scan(&exists)
 	return exists, err
@@ -172,31 +172,6 @@ func (r *groupChatRepo) GetMessages(ctx context.Context, groupID uuid.UUID, limi
 	return posts, nil
 }
 
-
-// func (r *groupChatRepo) GetGroupsForUser(ctx context.Context, userID uuid.UUID) ([]*domain.Group, error) {
-// 	rows, err := r.db.QueryContext(ctx, `
-// 		SELECT g.id, g.name, g.owner_id, g.created_at
-// 		FROM groups g
-// 		JOIN group_members gm ON g.id = gm.group_id
-// 		WHERE gm.user_id = $1
-// 		ORDER BY g.created_at DESC
-// 	`, userID)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer rows.Close()
-
-// 	var groups []*domain.Group
-// 	for rows.Next() {
-// 		var g domain.Group
-// 		if err := rows.Scan(&g.ID, &g.Name, &g.OwnerID, &g.CreatedAt); err != nil {
-// 			return nil, err
-// 		}
-// 		groups = append(groups, &g)
-// 	}
-
-// 	return groups, nil
-// }
 
 func (r *groupChatRepo) GetGroupsForUser(ctx context.Context, userID uuid.UUID) ([]*domain.Group, error) {
 	rows, err := r.db.QueryContext(ctx, `
